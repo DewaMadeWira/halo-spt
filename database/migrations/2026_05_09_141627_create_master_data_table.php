@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('import_files', function (Blueprint $table) {
+        Schema::create('master_data', function (Blueprint $table) {
             $table->id();
-            $table->string('original_name');
-            $table->string('file_path');
-            $table->enum('status', ['uploaded', 'processing', 'done', 'failed'])->default('uploaded');
-            $table->timestamp('processed_at')->nullable();
+            $table->string('npwp')->unique();
+            $table->string('taxpayer_name');
+            $table->string('ar_name');
+            $table->string('email');
+            $table->string('whatsapp_number');
             $table->timestamps();
         });
     }
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('import_files');
+        Schema::dropIfExists('master_data');
     }
 };

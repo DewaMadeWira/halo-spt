@@ -6,5 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class ImportFile extends Model
 {
-    //
+    protected $fillable = [
+        'original_name',
+        'file_path',
+        'status',
+        'processed_at',
+    ];
+
+    protected $casts = [
+        'processed_at' => 'datetime'
+    ];
 }
