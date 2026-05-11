@@ -2,7 +2,7 @@
 
 namespace App\Imports;
 
-use App\Models\MasterData;
+use App\Models\ARData;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Validators\Failure;
 
-class NpwpImport implements
+class ARImport implements
     ToCollection,
     WithHeadingRow,
     WithChunkReading,
@@ -24,23 +24,17 @@ class NpwpImport implements
      */
     public function collection(Collection $collection)
     {
-
         $data = $collection->map(function ($row) {
             return [
-                'npwp'           => $row['npwp'],
-                'taxpayer_name'  => $row['nama_wp'],
-                'ar_name'        => $row['nama_ar'],
-                'email'          => $row['email'],
-                'whatsapp_number' => $row['no_whatsapp'],
-                'updated_at'     => now(),
-                'created_at'     => now(),
+                'username' => $row["nama_pegawai"],
+                'nip' => $row["nip"],
             ];
         })->toArray();
 
-        MasterData::upsert(
+        ARData::upsert(
             $data,
-            ['npwp'],
-            ['taxpayer_name', 'ar_name', 'email', 'whatsapp_number', 'updated_at']
+            ['nip'],
+            ['username']
         );
     }
     public function chunkSize(): int
@@ -51,7 +45,8 @@ class NpwpImport implements
     public function rules(): array
     {
         return [
-            'npwp' => ['required', 'string'],
+            'nama_pegawai' => ['required', 'string'],
+            'nip' => ['required', 'string'],
             // add other validation rules per column
         ];
     }
