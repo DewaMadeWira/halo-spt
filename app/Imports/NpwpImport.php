@@ -29,7 +29,7 @@ class NpwpImport implements
             return [
                 'npwp'           => $row['npwp'],
                 'taxpayer_name'  => $row['nama_wp'],
-                'ar_name'        => $row['nama_ar'],
+                // 'ar_name'        => $row['nama_ar'],
                 'email'          => $row['email'],
                 'whatsapp_number' => $row['no_whatsapp'],
                 'updated_at'     => now(),
@@ -40,7 +40,13 @@ class NpwpImport implements
         MasterData::upsert(
             $data,
             ['npwp'],
-            ['taxpayer_name', 'ar_name', 'email', 'whatsapp_number', 'updated_at']
+            [
+                'taxpayer_name',
+                // 'ar_name',
+                'email',
+                'whatsapp_number',
+                'updated_at'
+            ]
         );
     }
     public function chunkSize(): int

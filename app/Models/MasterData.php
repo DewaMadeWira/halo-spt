@@ -10,7 +10,7 @@ class MasterData extends Model
     protected $fillable = [
         'npwp',
         'taxpayer_name',
-        'ar_name',
+        // 'ar_name',
         'email',
         'whatsapp_number',
     ];

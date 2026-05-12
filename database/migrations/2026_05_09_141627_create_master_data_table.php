@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('npwp')->unique();
             $table->string('taxpayer_name');
-            $table->string('ar_name');
+            // $table->string('ar_name');
             $table->string('email');
             $table->string('whatsapp_number');
             $table->timestamps();
