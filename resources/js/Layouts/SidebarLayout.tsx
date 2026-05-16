@@ -62,7 +62,7 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                     </div>
                 </SidebarFooter>
             </Sidebar>
-            <SidebarInset>
+            <SidebarInset className="bg-gray-100">
                 <SidebarTrigger />
                 {children}
             </SidebarInset>
