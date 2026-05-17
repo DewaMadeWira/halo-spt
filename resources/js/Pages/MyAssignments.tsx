@@ -96,10 +96,9 @@ export default function MyAssignments() {
         const groups: Record<string, AssignedRecord[]> = {};
 
         filteredRecords.forEach((record) => {
-            const key = `${record.period_year}-${String(record.period_month).padStart(
-                2,
-                "0",
-            )}`;
+            const key = `${record.period_year}-${String(
+                record.period_month,
+            ).padStart(2, "0")}`;
             if (!groups[key]) {
                 groups[key] = [];
             }
@@ -141,7 +140,9 @@ export default function MyAssignments() {
                             <Input
                                 placeholder="Search by NPWP or name"
                                 value={search}
-                                onChange={(event) => setSearch(event.target.value)}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
                             />
                         </div>
                     </div>
@@ -166,11 +167,17 @@ export default function MyAssignments() {
                                     <div className="mb-4 flex items-center justify-between">
                                         <div>
                                             <h2 className="text-lg font-semibold">
-                                                {formatMonthLabel(+year, +month)}
+                                                {formatMonthLabel(
+                                                    +year,
+                                                    +month,
+                                                )}
                                             </h2>
                                             <p className="text-sm text-muted-foreground">
-                                                {entries.length} assigned company
-                                                {entries.length === 1 ? "" : "ies"}
+                                                {entries.length} assigned
+                                                company
+                                                {entries.length === 1
+                                                    ? ""
+                                                    : "ies"}
                                             </p>
                                         </div>
                                     </div>
@@ -187,26 +194,40 @@ export default function MyAssignments() {
                                         </TableHeader>
                                         <TableBody>
                                             {entries.map((row) => {
-                                                const whatsappNumber = row.whatsapp_number
-                                                    ? normalizeWhatsappNumber(row.whatsapp_number)
-                                                    : "";
+                                                const whatsappNumber =
+                                                    row.whatsapp_number
+                                                        ? normalizeWhatsappNumber(
+                                                              row.whatsapp_number,
+                                                          )
+                                                        : "";
                                                 const mailto = row.email
                                                     ? `mailto:${encodeURIComponent(row.email)}`
                                                     : undefined;
-                                                const whatsappHref = whatsappNumber
-                                                    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-                                                          "Halo, saya ingin berdiskusi tentang NPWP yang terassign.",
-                                                      )}`
-                                                    : undefined;
+                                                const whatsappHref =
+                                                    whatsappNumber
+                                                        ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                                                              "Halo, saya ingin berdiskusi tentang NPWP yang terassign.",
+                                                          )}`
+                                                        : undefined;
 
                                                 return (
-                                                    <TableRow key={`${row.npwp}-${periodKey}`}>
-                                                        <TableCell>{row.npwp}</TableCell>
+                                                    <TableRow
+                                                        key={`${row.npwp}-${periodKey}`}
+                                                    >
                                                         <TableCell>
-                                                            {row.taxpayer_name ?? "-"}
+                                                            {row.npwp}
                                                         </TableCell>
-                                                        <TableCell>{row.email ?? "-"}</TableCell>
-                                                        <TableCell>{row.whatsapp_number ?? "-"}</TableCell>
+                                                        <TableCell>
+                                                            {row.taxpayer_name ??
+                                                                "-"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {row.email ?? "-"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {row.whatsapp_number ??
+                                                                "-"}
+                                                        </TableCell>
                                                         <TableCell className="space-x-2">
                                                             <Button
                                                                 asChild
@@ -214,7 +235,10 @@ export default function MyAssignments() {
                                                                 size="sm"
                                                             >
                                                                 <a
-                                                                    href={mailto ?? "#"}
+                                                                    href={
+                                                                        mailto ??
+                                                                        "#"
+                                                                    }
                                                                     target="_blank"
                                                                     rel="noreferrer"
                                                                     className={
@@ -232,7 +256,10 @@ export default function MyAssignments() {
                                                                 size="sm"
                                                             >
                                                                 <a
-                                                                    href={whatsappHref ?? "#"}
+                                                                    href={
+                                                                        whatsappHref ??
+                                                                        "#"
+                                                                    }
                                                                     target="_blank"
                                                                     rel="noreferrer"
                                                                     className={
@@ -250,8 +277,8 @@ export default function MyAssignments() {
                                             })}
                                         </TableBody>
                                         <TableCaption>
-                                            Data is filtered by your assigned NIP and the
-                                            selected month.
+                                            Data is filtered by your assigned
+                                            NIP and the selected month.
                                         </TableCaption>
                                     </Table>
                                 </section>

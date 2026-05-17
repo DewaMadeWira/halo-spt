@@ -9,7 +9,7 @@ import {
     SidebarInset,
 } from "@/Components/ui/sidebar";
 import { PropsWithChildren } from "react";
-import { usePage } from '@inertiajs/react';
+import { usePage } from "@inertiajs/react";
 
 export default function SidebarLayout({ children }: PropsWithChildren) {
     const user = usePage().props.auth.user as { role?: string } | null;
@@ -21,7 +21,7 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                     <div className="px-4 py-3">
                         <div className="text-lg font-semibold">Halo SPT</div>
                         <div className="text-sm text-muted-foreground">
-                            {user?.role === 'ar' ? 'AR User' : 'Admin'}
+                            {user?.role === "ar" ? "AR User" : "Admin"}
                         </div>
                     </div>
                 </SidebarHeader>
@@ -34,7 +34,7 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                             >
                                 Home
                             </a>
-                            {user?.role === 'admin' ? (
+                            {user?.role === "admin" ? (
                                 <>
                                     <a
                                         href="/master-data"
@@ -62,7 +62,7 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                                     </a>
                                 </>
                             ) : null}
-                            {user?.role === 'ar' ? (
+                            {user?.role === "ar" ? (
                                 <a
                                     href="/my-assignments"
                                     className="block py-2 px-3 rounded hover:bg-muted"

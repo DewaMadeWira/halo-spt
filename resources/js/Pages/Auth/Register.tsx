@@ -1,26 +1,26 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import InputError from "@/Components/InputError";
+import InputLabel from "@/Components/InputLabel";
+import PrimaryButton from "@/Components/PrimaryButton";
+import TextInput from "@/Components/TextInput";
+import GuestLayout from "@/Layouts/GuestLayout";
+import { Head, Link, useForm } from "@inertiajs/react";
+import { FormEventHandler } from "react";
 
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-        role: 'admin',
-        nip: '',
+        name: "",
+        email: "",
+        password: "",
+        password_confirmation: "",
+        role: "admin",
+        nip: "",
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
+        post(route("register"), {
+            onFinish: () => reset("password", "password_confirmation"),
         });
     };
 
@@ -39,7 +39,7 @@ export default function Register() {
                         className="mt-1 block w-full"
                         autoComplete="name"
                         isFocused={true}
-                        onChange={(e) => setData('name', e.target.value)}
+                        onChange={(e) => setData("name", e.target.value)}
                         required
                     />
 
@@ -56,7 +56,7 @@ export default function Register() {
                         value={data.email}
                         className="mt-1 block w-full"
                         autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e) => setData("email", e.target.value)}
                         required
                     />
 
@@ -71,7 +71,7 @@ export default function Register() {
                         name="role"
                         value={data.role}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        onChange={(e) => setData('role', e.target.value)}
+                        onChange={(e) => setData("role", e.target.value)}
                     >
                         <option value="admin">Admin</option>
                         <option value="ar">AR</option>
@@ -80,7 +80,7 @@ export default function Register() {
                     <InputError message={errors.role} className="mt-2" />
                 </div>
 
-                {data.role === 'ar' ? (
+                {data.role === "ar" ? (
                     <div className="mt-4">
                         <InputLabel htmlFor="nip" value="NIP" />
 
@@ -89,7 +89,7 @@ export default function Register() {
                             name="nip"
                             value={data.nip}
                             className="mt-1 block w-full"
-                            onChange={(e) => setData('nip', e.target.value)}
+                            onChange={(e) => setData("nip", e.target.value)}
                             required
                         />
 
@@ -107,7 +107,7 @@ export default function Register() {
                         value={data.password}
                         className="mt-1 block w-full"
                         autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
+                        onChange={(e) => setData("password", e.target.value)}
                         required
                     />
 
@@ -128,7 +128,7 @@ export default function Register() {
                         className="mt-1 block w-full"
                         autoComplete="new-password"
                         onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
+                            setData("password_confirmation", e.target.value)
                         }
                         required
                     />
@@ -141,7 +141,7 @@ export default function Register() {
 
                 <div className="mt-4 flex items-center justify-end">
                     <Link
-                        href={route('login')}
+                        href={route("login")}
                         className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
                         Already registered?

@@ -183,7 +183,8 @@ export default function AssignARData() {
                                     <PopoverDescription>
                                         Upload an Excel or CSV file to import AR
                                         assignment data. Include period_year and
-                                        period_month columns for monthly tracking.
+                                        period_month columns for monthly
+                                        tracking.
                                     </PopoverDescription>
                                 </PopoverHeader>
 
@@ -321,7 +322,11 @@ export default function AssignARData() {
                                         <TableCell>{row.npwp}</TableCell>
                                         <TableCell>{row.nip}</TableCell>
                                         <TableCell>
-                                            {row.period_year}/{String(row.period_month).padStart(2, '0')}
+                                            {row.period_year}/
+                                            {String(row.period_month).padStart(
+                                                2,
+                                                "0",
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}
