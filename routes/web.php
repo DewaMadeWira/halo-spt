@@ -2,10 +2,11 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-route::get('/', function () {
+Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
@@ -13,12 +14,53 @@ route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
-Route::get('/master-data', function () {
-    return Inertia::render('MasterData', []);
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/master-data', function () {
+        if (Auth::user()?->role !== 'admin') {
+            abort(403);
+        }
+
+        return Inertia::render('MasterData');
+    });
+
+    Route::get('/ar-data', function () {
+        if (Auth::user()?->role !== 'admin') {
+            abort(403);
+        }
+
+        return Inertia::render('ARData');
+    });
+
+    Route::get('/assign-ar-data', function () {
+        if (Auth::user()?->role !== 'admin') {
+            abort(403);
+        }
+
+        return Inertia::render('AssignARData');
+    });
+
+    Route::get('/my-assignments', function () {
+        if (Auth::user()?->role !== 'ar') {
+            abort(403);
+        }
+
+        return Inertia::render('MyAssignments');
+    });
 });
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    $user = Auth::user();
+
+    if ($user?->role === 'admin') {
+        return redirect('/master-data');
+    }
+
+    if ($user?->role === 'ar') {
+        return redirect('/my-assignments');
+    }
+
+    return redirect('/');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

@@ -3,18 +3,47 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessARImportFile;
+use App\Models\ARData;
 use App\Models\ImportFileAR;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ImportARController extends Controller
 {
+    protected function authorizeAdmin(): void
+    {
+        if (Auth::user()?->role !== 'admin') {
+            abort(403);
+        }
+    }
+
+    public function index()
+    {
+        $this->authorizeAdmin();
+
+        return ImportFileAR::where('file_path', 'like', 'imports/ar-data/%')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function records()
+    {
+        $this->authorizeAdmin();
+
+        return ARData::orderBy('username')
+            ->limit(200)
+            ->get();
+    }
+
     public function upload(Request $request)
     {
+        $this->authorizeAdmin();
+
         $request->validate(
             ['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]
         );
 
-        $path = $request->file('file')->store('imports');
+        $path = $request->file('file')->store('imports/ar-data');
 
         $importFile = ImportFileAR::create([
             'original_name' => $request->file('file')->getClientOriginalName(),
@@ -29,6 +58,8 @@ class ImportARController extends Controller
     }
     public function process(ImportFileAR $importFile)
     {
+        $this->authorizeAdmin();
+
         if ($importFile->status === 'processing') {
             return response()->json(['message' => 'Already being processed.'], 409);
         }
@@ -39,6 +70,8 @@ class ImportARController extends Controller
     }
     public function status(ImportFileAR $importFile)
     {
+        $this->authorizeAdmin();
+
         return response()->json([
             'status'       => $importFile->status,
             'processed_at' => $importFile->processed_at,

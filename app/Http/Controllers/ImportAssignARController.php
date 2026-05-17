@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ProcessImportFile;
+use App\Imports\AssignARImport;
+use App\Jobs\ProcessAssignARImportFile;
+use App\Models\AssignArData;
 use App\Models\ImportFile;
-use App\Models\MasterData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class ImportMasterDataController extends Controller
+class ImportAssignARController extends Controller
 {
     protected function authorizeAdmin(): void
     {
@@ -17,11 +18,18 @@ class ImportMasterDataController extends Controller
         }
     }
 
+    protected function authorizeAr(): void
+    {
+        if (Auth::user()?->role !== 'ar') {
+            abort(403);
+        }
+    }
+
     public function index()
     {
         $this->authorizeAdmin();
 
-        return ImportFile::where('file_path', 'like', 'imports/master-data/%')
+        return ImportFile::where('file_path', 'like', 'imports/assign-ar/%')
             ->orderBy('created_at', 'desc')
             ->get();
     }
@@ -34,7 +42,7 @@ class ImportMasterDataController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
         ]);
 
-        $path = $request->file('file')->store('imports/master-data');
+        $path = $request->file('file')->store('imports/assign-ar');
 
         $importFile = ImportFile::create([
             'original_name' => $request->file('file')->getClientOriginalName(),
@@ -56,7 +64,7 @@ class ImportMasterDataController extends Controller
             return response()->json(['message' => 'Already being processed.'], 409);
         }
 
-        ProcessImportFile::dispatch($importFile);
+        ProcessAssignARImportFile::dispatch($importFile);
 
         return response()->json(['message' => 'Import job has been queued.']);
     }
@@ -75,8 +83,32 @@ class ImportMasterDataController extends Controller
     {
         $this->authorizeAdmin();
 
-        return MasterData::orderBy('taxpayer_name')
+        return AssignArData::orderBy('period_year', 'desc')
+            ->orderBy('period_month', 'desc')
+            ->orderBy('npwp')
             ->limit(200)
+            ->get();
+    }
+
+    public function myRecords()
+    {
+        $this->authorizeAr();
+
+        $user = Auth::user();
+
+        return AssignArData::where('nip', $user->nip)
+            ->leftJoin('master_data', 'assign_ar_data.npwp', '=', 'master_data.npwp')
+            ->select(
+                'assign_ar_data.npwp',
+                'master_data.taxpayer_name',
+                'master_data.email',
+                'master_data.whatsapp_number',
+                'assign_ar_data.period_year',
+                'assign_ar_data.period_month',
+            )
+            ->orderBy('assign_ar_data.period_year', 'desc')
+            ->orderBy('assign_ar_data.period_month', 'desc')
+            ->orderBy('assign_ar_data.npwp')
             ->get();
     }
 }

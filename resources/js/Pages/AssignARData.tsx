@@ -29,17 +29,17 @@ interface ImportFileRecord {
     processed_at: string | null;
 }
 
-interface MasterDataRecord {
+interface AssignARDataRecord {
     id: number;
     npwp: string;
-    taxpayer_name: string;
-    email: string | null;
-    whatsapp_number: string | null;
+    nip: string;
+    period_year: number;
+    period_month: number;
 }
 
-export default function MasterData() {
+export default function AssignARData() {
     const [imports, setImports] = useState<ImportFileRecord[]>([]);
-    const [masterData, setMasterData] = useState<MasterDataRecord[]>([]);
+    const [assignData, setAssignData] = useState<AssignARDataRecord[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -65,7 +65,7 @@ export default function MasterData() {
     const fetchImports = async () => {
         try {
             const { data } = await axios.get<ImportFileRecord[]>(
-                "/api/master-data/imports",
+                "/api/assign-ar/imports",
             );
             setImports(data);
             setPageError(null);
@@ -74,12 +74,12 @@ export default function MasterData() {
         }
     };
 
-    const fetchMasterData = async () => {
+    const fetchAssignData = async () => {
         try {
-            const { data } = await axios.get<MasterDataRecord[]>(
-                "/api/master-data/records",
+            const { data } = await axios.get<AssignARDataRecord[]>(
+                "/api/assign-ar/records",
             );
-            setMasterData(data);
+            setAssignData(data);
             setPageError(null);
         } catch (error: unknown) {
             setPageError(getErrorMessage(error));
@@ -88,7 +88,7 @@ export default function MasterData() {
 
     useEffect(() => {
         fetchImports();
-        fetchMasterData();
+        fetchAssignData();
         const interval = window.setInterval(fetchImports, 10000);
         return () => window.clearInterval(interval);
     }, []);
@@ -107,15 +107,14 @@ export default function MasterData() {
 
         try {
             const response = await axios.post(
-                "/api/master-data/import/upload",
+                "/api/assign-ar/import/upload",
                 formData,
             );
-
             await axios.post(
-                `/api/master-data/import/${response.data.id}/process`,
+                `/api/assign-ar/import/${response.data.id}/process`,
             );
             await fetchImports();
-            await fetchMasterData();
+            await fetchAssignData();
             setSelectedFile(null);
             setIsPopoverOpen(false);
         } catch (error: unknown) {
@@ -129,7 +128,7 @@ export default function MasterData() {
 
     const handleProcess = async (importFileId: number) => {
         try {
-            await axios.post(`/api/master-data/import/${importFileId}/process`);
+            await axios.post(`/api/assign-ar/import/${importFileId}/process`);
             await fetchImports();
             setPageError(null);
         } catch (error: unknown) {
@@ -144,7 +143,7 @@ export default function MasterData() {
             <div className="p-5">
                 <div className="flex justify-between bg-white p-7 rounded-md items-center">
                     <div>
-                        <h1 className="text-2xl">Master data</h1>
+                        <h1 className="text-2xl">Assign AR data</h1>
                         <p className="text-sm text-muted-foreground">
                             Senin, 4 Mei 2025
                         </p>
@@ -161,10 +160,10 @@ export default function MasterData() {
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h4 className="text-lg font-medium">
-                                Total Wajib Pajak
+                                Total Assigned AR Data
                             </h4>
                             <p className="mt-1 text-3xl font-semibold">
-                                {masterData.length}
+                                {assignData.length}
                             </p>
                         </div>
                         <Popover
@@ -179,11 +178,12 @@ export default function MasterData() {
                             <PopoverContent side="bottom" className="w-80">
                                 <PopoverHeader>
                                     <PopoverTitle>
-                                        Upload Master Data
+                                        Upload Assign AR Data
                                     </PopoverTitle>
                                     <PopoverDescription>
-                                        Upload an Excel or CSV file to import
-                                        NPWP master data.
+                                        Upload an Excel or CSV file to import AR
+                                        assignment data. Include period_year and
+                                        period_month columns for monthly tracking.
                                     </PopoverDescription>
                                 </PopoverHeader>
 
@@ -229,8 +229,7 @@ export default function MasterData() {
                                     Uploaded Excel Files
                                 </h2>
                                 <p className="text-sm text-muted-foreground">
-                                    Recent master data uploads and import
-                                    status.
+                                    Recent Assign AR uploads and import status.
                                 </p>
                             </div>
                         </div>
@@ -300,10 +299,11 @@ export default function MasterData() {
                     <section className="bg-white rounded-md p-6 shadow-sm">
                         <div className="mb-4">
                             <h2 className="text-lg font-semibold">
-                                Imported Master Data
+                                Imported Assign AR Data
                             </h2>
                             <p className="text-sm text-muted-foreground">
-                                Imported records from the latest Excel uploads.
+                                Imported assignment rows from the latest Excel
+                                uploads.
                             </p>
                         </div>
 
@@ -311,31 +311,25 @@ export default function MasterData() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>NPWP</TableHead>
-                                    <TableHead>Taxpayer</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>WhatsApp</TableHead>
+                                    <TableHead>NIP</TableHead>
+                                    <TableHead>Period</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {masterData.map((row) => (
+                                {assignData.map((row) => (
                                     <TableRow key={row.id}>
                                         <TableCell>{row.npwp}</TableCell>
+                                        <TableCell>{row.nip}</TableCell>
                                         <TableCell>
-                                            {row.taxpayer_name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.email ?? "-"}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.whatsapp_number ?? "-"}
+                                            {row.period_year}/{String(row.period_month).padStart(2, '0')}
                                         </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                             <TableCaption>
-                                {masterData.length === 0
-                                    ? "No master data imported yet."
-                                    : `${masterData.length} master data records loaded.`}
+                                {assignData.length === 0
+                                    ? "No assigned AR data imported yet."
+                                    : `${assignData.length} rows loaded.`}
                             </TableCaption>
                         </Table>
                     </section>

@@ -12,6 +12,8 @@ export default function Register() {
         email: '',
         password: '',
         password_confirmation: '',
+        role: 'admin',
+        nip: '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -60,6 +62,40 @@ export default function Register() {
 
                     <InputError message={errors.email} className="mt-2" />
                 </div>
+
+                <div className="mt-4">
+                    <InputLabel htmlFor="role" value="Role" />
+
+                    <select
+                        id="role"
+                        name="role"
+                        value={data.role}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        onChange={(e) => setData('role', e.target.value)}
+                    >
+                        <option value="admin">Admin</option>
+                        <option value="ar">AR</option>
+                    </select>
+
+                    <InputError message={errors.role} className="mt-2" />
+                </div>
+
+                {data.role === 'ar' ? (
+                    <div className="mt-4">
+                        <InputLabel htmlFor="nip" value="NIP" />
+
+                        <TextInput
+                            id="nip"
+                            name="nip"
+                            value={data.nip}
+                            className="mt-1 block w-full"
+                            onChange={(e) => setData('nip', e.target.value)}
+                            required
+                        />
+
+                        <InputError message={errors.nip} className="mt-2" />
+                    </div>
+                ) : null}
 
                 <div className="mt-4">
                     <InputLabel htmlFor="password" value="Password" />
