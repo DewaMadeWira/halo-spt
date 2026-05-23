@@ -70,8 +70,9 @@ function formatTemplate(template: string, row: AssignedRecord, arName: string) {
 
 export default function MyAssignments() {
     const page = usePage();
-    const user = ((page.props as any)?.auth as { user?: { name: string } } | undefined)
-        ?.user ?? { name: "Account Representative Anda" };
+    const user = (
+        (page.props as any)?.auth as { user?: { name: string } } | undefined
+    )?.user ?? { name: "Account Representative Anda" };
     const [records, setRecords] = useState<AssignedRecord[]>([]);
     const [search, setSearch] = useState("");
     const [pageError, setPageError] = useState<string | null>(null);
@@ -254,11 +255,12 @@ export default function MyAssignments() {
                                                     row,
                                                     user.name,
                                                 );
-                                                const whatsappText = formatTemplate(
-                                                    whatsappBody,
-                                                    row,
-                                                    user.name,
-                                                );
+                                                const whatsappText =
+                                                    formatTemplate(
+                                                        whatsappBody,
+                                                        row,
+                                                        user.name,
+                                                    );
                                                 const gmailHref = row.email
                                                     ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
                                                           row.email,

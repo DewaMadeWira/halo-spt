@@ -331,7 +331,7 @@ export default function ARData() {
         setCreateError(null);
 
         try {
-            const { data } = await axios.post('/api/import-ar/records', {
+            const { data } = await axios.post("/api/import-ar/records", {
                 nip: newNip,
                 username: newUsername,
                 email: newEmail || null,
@@ -339,14 +339,14 @@ export default function ARData() {
             });
 
             setArData((prev) => [data, ...prev]);
-            setNewNip('');
-            setNewUsername('');
-            setNewEmail('');
-            setNewPassword('');
+            setNewNip("");
+            setNewUsername("");
+            setNewEmail("");
+            setNewPassword("");
             setIsCreateModalOpen(false);
             setPageError(null);
-            toast.success('AR record added', {
-                description: 'A new AR record has been created.',
+            toast.success("AR record added", {
+                description: "A new AR record has been created.",
             });
         } catch (error: unknown) {
             const message = getErrorMessage(error);
@@ -387,14 +387,18 @@ export default function ARData() {
                                 <label className="text-sm">Username</label>
                                 <Input
                                     value={newUsername}
-                                    onChange={(e) => setNewUsername(e.target.value)}
+                                    onChange={(e) =>
+                                        setNewUsername(e.target.value)
+                                    }
                                 />
                             </div>
                             <div>
                                 <label className="text-sm">Email</label>
                                 <Input
                                     value={newEmail}
-                                    onChange={(e) => setNewEmail(e.target.value)}
+                                    onChange={(e) =>
+                                        setNewEmail(e.target.value)
+                                    }
                                 />
                             </div>
                             <div>
@@ -402,12 +406,16 @@ export default function ARData() {
                                 <Input
                                     type="password"
                                     value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    onChange={(e) =>
+                                        setNewPassword(e.target.value)
+                                    }
                                 />
                             </div>
                         </div>
                         {createError ? (
-                            <p className="text-sm text-destructive">{createError}</p>
+                            <p className="text-sm text-destructive">
+                                {createError}
+                            </p>
                         ) : null}
                         <div className="flex justify-end gap-2">
                             <Button
@@ -417,7 +425,7 @@ export default function ARData() {
                                 Cancel
                             </Button>
                             <Button onClick={handleCreate} disabled={creating}>
-                                {creating ? 'Adding...' : 'Add record'}
+                                {creating ? "Adding..." : "Add record"}
                             </Button>
                         </div>
                     </div>
@@ -592,9 +600,11 @@ export default function ARData() {
                                     <TableRow key={row.id}>
                                         <TableCell>{row.nip}</TableCell>
                                         <TableCell>{row.username}</TableCell>
-                                        <TableCell>{row.email || '-'}</TableCell>
                                         <TableCell>
-                                            {row.password ? '••••••' : '-'}
+                                            {row.email || "-"}
+                                        </TableCell>
+                                        <TableCell>
+                                            {row.password ? "••••••" : "-"}
                                         </TableCell>
                                         <TableCell>
                                             <EditARPopover

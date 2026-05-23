@@ -24,8 +24,9 @@ function formatMonthLabel(year: number, month: number) {
 
 export default function AssignmentTemplates() {
     const page = usePage();
-    const user = ((page.props as any)?.auth as { user?: { name: string } } | undefined)
-        ?.user ?? { name: "Account Representative Anda" };
+    const user = (
+        (page.props as any)?.auth as { user?: { name: string } } | undefined
+    )?.user ?? { name: "Account Representative Anda" };
 
     const [emailSubject, setEmailSubject] = useState(
         "Pengingat SPT Masa {{period}}",
@@ -38,9 +39,7 @@ export default function AssignmentTemplates() {
     );
 
     useEffect(() => {
-        const saved = window.localStorage.getItem(
-            "assignmentTemplates",
-        );
+        const saved = window.localStorage.getItem("assignmentTemplates");
         if (!saved) {
             return;
         }
@@ -77,10 +76,7 @@ export default function AssignmentTemplates() {
         period_month: 4,
     };
 
-    const formatTemplate = (
-        template: string,
-        row: AssignedRecord,
-    ) => {
+    const formatTemplate = (template: string, row: AssignedRecord) => {
         return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
             switch (token) {
                 case "company":
@@ -104,7 +100,8 @@ export default function AssignmentTemplates() {
                     <div>
                         <h1 className="text-2xl">Assignment templates</h1>
                         <p className="text-sm text-muted-foreground">
-                            Manage message templates for email and WhatsApp reminders.
+                            Manage message templates for email and WhatsApp
+                            reminders.
                         </p>
                     </div>
                     <Button onClick={handleSaveTemplates} size="sm">
@@ -114,10 +111,16 @@ export default function AssignmentTemplates() {
 
                 <div className="mt-8 grid gap-4 lg:grid-cols-2">
                     <div className="rounded-md bg-white p-6 shadow-sm">
-                        <h3 className="text-lg font-semibold">Email template</h3>
+                        <h3 className="text-lg font-semibold">
+                            Email template
+                        </h3>
                         <p className="mt-2 text-sm text-muted-foreground">
-                            Customize the Gmail subject and body for each reminder.
-                            Use placeholders: <code>{"{{company}}"}</code>, <code>{"{{npwp}}"}</code>, <code>{"{{period}}"}</code>, <code>{"{{ar_name}}"}</code>.
+                            Customize the Gmail subject and body for each
+                            reminder. Use placeholders:{" "}
+                            <code>{"{{company}}"}</code>,{" "}
+                            <code>{"{{npwp}}"}</code>,{" "}
+                            <code>{"{{period}}"}</code>,{" "}
+                            <code>{"{{ar_name}}"}</code>.
                         </p>
                         <div className="mt-4 space-y-4">
                             <div>
@@ -146,9 +149,12 @@ export default function AssignmentTemplates() {
                         </div>
                     </div>
                     <div className="rounded-md bg-white p-6 shadow-sm">
-                        <h3 className="text-lg font-semibold">WhatsApp template</h3>
+                        <h3 className="text-lg font-semibold">
+                            WhatsApp template
+                        </h3>
                         <p className="mt-2 text-sm text-muted-foreground">
-                            Customize the WhatsApp message for each assigned company.
+                            Customize the WhatsApp message for each assigned
+                            company.
                         </p>
                         <div className="mt-4">
                             <label className="mb-2 block text-sm font-medium">
@@ -168,7 +174,8 @@ export default function AssignmentTemplates() {
                 <section className="mt-8 rounded-md bg-white p-6 shadow-sm">
                     <h2 className="text-lg font-semibold">Preview</h2>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        This preview shows how the selected templates will appear for a sample assigned company.
+                        This preview shows how the selected templates will
+                        appear for a sample assigned company.
                     </p>
                     <div className="mt-6 space-y-4">
                         <div className="rounded-2xl border border-border bg-muted p-4">
@@ -184,7 +191,9 @@ export default function AssignmentTemplates() {
                             </p>
                         </div>
                         <div className="rounded-2xl border border-border bg-muted p-4">
-                            <p className="text-sm font-semibold">WhatsApp body</p>
+                            <p className="text-sm font-semibold">
+                                WhatsApp body
+                            </p>
                             <p className="mt-2 whitespace-pre-wrap text-sm">
                                 {formatTemplate(whatsappBody, sampleRecord)}
                             </p>

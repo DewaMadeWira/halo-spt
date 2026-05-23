@@ -31,7 +31,7 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                     <SidebarGroup>
                         <nav className="px-2 py-1">
                             <Link
-                                href={route('dashboard')}
+                                href={route("dashboard")}
                                 className="block py-2 px-3 rounded hover:bg-muted"
                             >
                                 Dashboard
@@ -39,19 +39,19 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                             {role === "admin" ? (
                                 <>
                                     <Link
-                                        href={route('master-data')}
+                                        href={route("master-data")}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         Master Data
                                     </Link>
                                     <Link
-                                        href={route('ar-data')}
+                                        href={route("ar-data")}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         AR Data
                                     </Link>
                                     <Link
-                                        href={route('assign-ar-data')}
+                                        href={route("assign-ar-data")}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         Assign AR Data
@@ -61,13 +61,13 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                             {role === "ar" ? (
                                 <>
                                     <Link
-                                        href={route('my-assignments')}
+                                        href={route("my-assignments")}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         My Assignments
                                     </Link>
                                     <Link
-                                        href={route('assignment-templates')}
+                                        href={route("assignment-templates")}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         Assignment Templates
