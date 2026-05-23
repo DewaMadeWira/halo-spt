@@ -35,6 +35,8 @@ interface ARDataRecord {
     id: number;
     nip: string;
     username: string;
+    email?: string | null;
+    password?: string | null;
 }
 
 function EditARPopover({
@@ -49,6 +51,8 @@ function EditARPopover({
     const [open, setOpen] = useState(false);
     const [nip, setNip] = useState(row.nip);
     const [username, setUsername] = useState(row.username);
+    const [email, setEmail] = useState(row.email ?? "");
+    const [password, setPassword] = useState(row.password ?? "");
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -64,6 +68,8 @@ function EditARPopover({
                 {
                     nip,
                     username,
+                    email: email || null,
+                    password: password || null,
                 },
             );
             onSave(data);
@@ -219,8 +225,15 @@ export default function ARData() {
     const [arData, setArData] = useState<ARDataRecord[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [newNip, setNewNip] = useState("");
+    const [newUsername, setNewUsername] = useState("");
+    const [newEmail, setNewEmail] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [creating, setCreating] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [createError, setCreateError] = useState<string | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
 
     const getErrorMessage = (error: unknown) => {
@@ -313,6 +326,37 @@ export default function ARData() {
         }
     };
 
+    const handleCreate = async () => {
+        setCreating(true);
+        setCreateError(null);
+
+        try {
+            const { data } = await axios.post('/api/import-ar/records', {
+                nip: newNip,
+                username: newUsername,
+                email: newEmail || null,
+                password: newPassword || null,
+            });
+
+            setArData((prev) => [data, ...prev]);
+            setNewNip('');
+            setNewUsername('');
+            setNewEmail('');
+            setNewPassword('');
+            setIsCreateModalOpen(false);
+            setPageError(null);
+            toast.success('AR record added', {
+                description: 'A new AR record has been created.',
+            });
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            setCreateError(message);
+            setPageError(message);
+        } finally {
+            setCreating(false);
+        }
+    };
+
     return (
         <SidebarLayout>
             <div className="p-5">
@@ -324,6 +368,60 @@ export default function ARData() {
                         </p>
                     </div>
                 </div>
+                <Modal
+                    show={isCreateModalOpen}
+                    onClose={() => setIsCreateModalOpen(false)}
+                    maxWidth="md"
+                >
+                    <div className="p-6 space-y-4">
+                        <h3 className="text-lg font-medium">Add AR record</h3>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                                <label className="text-sm">NIP</label>
+                                <Input
+                                    value={newNip}
+                                    onChange={(e) => setNewNip(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm">Username</label>
+                                <Input
+                                    value={newUsername}
+                                    onChange={(e) => setNewUsername(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm">Email</label>
+                                <Input
+                                    value={newEmail}
+                                    onChange={(e) => setNewEmail(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm">Password</label>
+                                <Input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        {createError ? (
+                            <p className="text-sm text-destructive">{createError}</p>
+                        ) : null}
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setIsCreateModalOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreate} disabled={creating}>
+                                {creating ? 'Adding...' : 'Add record'}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
 
                 {pageError ? (
                     <div className="mt-6 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
@@ -484,6 +582,8 @@ export default function ARData() {
                                 <TableRow>
                                     <TableHead>NIP</TableHead>
                                     <TableHead>Username</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Password</TableHead>
                                     <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -492,6 +592,10 @@ export default function ARData() {
                                     <TableRow key={row.id}>
                                         <TableCell>{row.nip}</TableCell>
                                         <TableCell>{row.username}</TableCell>
+                                        <TableCell>{row.email || '-'}</TableCell>
+                                        <TableCell>
+                                            {row.password ? '••••••' : '-'}
+                                        </TableCell>
                                         <TableCell>
                                             <EditARPopover
                                                 row={row}

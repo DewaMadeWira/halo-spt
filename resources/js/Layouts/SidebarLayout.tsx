@@ -14,6 +14,7 @@ import { Toaster } from "@/Components/ui/sonner";
 
 export default function SidebarLayout({ children }: PropsWithChildren) {
     const user = usePage().props.auth.user as { role?: string } | null;
+    const role = user?.role?.toLowerCase();
 
     return (
         <SidebarProvider>
@@ -29,47 +30,49 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                 <SidebarContent>
                     <SidebarGroup>
                         <nav className="px-2 py-1">
-                            <a
-                                href="/"
+                            <Link
+                                href={route('dashboard')}
                                 className="block py-2 px-3 rounded hover:bg-muted"
                             >
-                                Home
-                            </a>
-                            {user?.role === "admin" ? (
+                                Dashboard
+                            </Link>
+                            {role === "admin" ? (
                                 <>
-                                    <a
-                                        href="/master-data"
+                                    <Link
+                                        href={route('master-data')}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         Master Data
-                                    </a>
-                                    <a
-                                        href="/ar-data"
+                                    </Link>
+                                    <Link
+                                        href={route('ar-data')}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         AR Data
-                                    </a>
-                                    <a
-                                        href="/assign-ar-data"
+                                    </Link>
+                                    <Link
+                                        href={route('assign-ar-data')}
                                         className="block py-2 px-3 rounded hover:bg-muted"
                                     >
                                         Assign AR Data
-                                    </a>
-                                    <a
-                                        href="/imports"
-                                        className="block py-2 px-3 rounded hover:bg-muted"
-                                    >
-                                        Imports
-                                    </a>
+                                    </Link>
                                 </>
                             ) : null}
-                            {user?.role === "ar" ? (
-                                <a
-                                    href="/my-assignments"
-                                    className="block py-2 px-3 rounded hover:bg-muted"
-                                >
-                                    My Assignments
-                                </a>
+                            {role === "ar" ? (
+                                <>
+                                    <Link
+                                        href={route('my-assignments')}
+                                        className="block py-2 px-3 rounded hover:bg-muted"
+                                    >
+                                        My Assignments
+                                    </Link>
+                                    <Link
+                                        href={route('assignment-templates')}
+                                        className="block py-2 px-3 rounded hover:bg-muted"
+                                    >
+                                        Assignment Templates
+                                    </Link>
+                                </>
                             ) : null}
                         </nav>
                     </SidebarGroup>

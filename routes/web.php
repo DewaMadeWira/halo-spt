@@ -7,12 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('dashboard');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -22,7 +17,7 @@ Route::middleware(['auth'])->group(function () {
         }
 
         return Inertia::render('MasterData');
-    });
+    })->name('master-data');
 
     Route::get('/ar-data', function () {
         if (Auth::user()?->role !== 'admin') {
@@ -30,7 +25,7 @@ Route::middleware(['auth'])->group(function () {
         }
 
         return Inertia::render('ARData');
-    });
+    })->name('ar-data');
 
     Route::get('/assign-ar-data', function () {
         if (Auth::user()?->role !== 'admin') {
@@ -38,7 +33,7 @@ Route::middleware(['auth'])->group(function () {
         }
 
         return Inertia::render('AssignARData');
-    });
+    })->name('assign-ar-data');
 
     Route::get('/my-assignments', function () {
         if (Auth::user()?->role !== 'ar') {
@@ -46,7 +41,15 @@ Route::middleware(['auth'])->group(function () {
         }
 
         return Inertia::render('MyAssignments');
-    });
+    })->name('my-assignments');
+
+    Route::get('/assignment-templates', function () {
+        if (Auth::user()?->role !== 'ar') {
+            abort(403);
+        }
+
+        return Inertia::render('AssignmentTemplates');
+    })->name('assignment-templates');
 });
 
 use App\Http\Controllers\DashboardController;

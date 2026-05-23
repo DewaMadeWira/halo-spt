@@ -78,6 +78,27 @@ class ImportARController extends Controller
         ]);
     }
 
+    public function store(Request $request)
+    {
+        $this->authorizeAdmin();
+
+        $request->validate([
+            'nip' => ['required', 'string'],
+            'username' => ['required', 'string'],
+            'email' => ['nullable', 'email'],
+            'password' => ['nullable', 'string'],
+        ]);
+
+        $arData = ARData::create($request->only([
+            'nip',
+            'username',
+            'email',
+            'password',
+        ]));
+
+        return response()->json($arData, 201);
+    }
+
     public function update(Request $request, ARData $arData)
     {
         $this->authorizeAdmin();
@@ -85,9 +106,16 @@ class ImportARController extends Controller
         $request->validate([
             'nip' => ['required', 'string'],
             'username' => ['required', 'string'],
+            'email' => ['nullable', 'email'],
+            'password' => ['nullable', 'string'],
         ]);
 
-        $arData->update($request->only(['nip', 'username']));
+        $arData->update($request->only([
+            'nip',
+            'username',
+            'email',
+            'password',
+        ]));
 
         return response()->json($arData);
     }

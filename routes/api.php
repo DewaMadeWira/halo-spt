@@ -17,6 +17,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/import-ar/{importFile}/status', [ImportARController::class, 'status']);
     Route::get('/import-ar/imports', [ImportARController::class, 'index']);
     Route::get('/import-ar/records', [ImportARController::class, 'records']);
+    Route::post('/import-ar/records', [ImportARController::class, 'store']);
     Route::put('/import-ar/records/{arData}', [ImportARController::class, 'update']);
     Route::delete('/import-ar/records/{arData}', [ImportARController::class, 'destroy']);
 

@@ -28,13 +28,15 @@ class ARImport implements
             return [
                 'username' => $row["nama_pegawai"],
                 'nip' => $row["nip"],
+                'email' => $row["email"] ?? null,
+                'password' => $row["password"] ?? null,
             ];
         })->toArray();
 
         ARData::upsert(
             $data,
             ['nip'],
-            ['username']
+            ['username', 'email', 'password']
         );
     }
     public function chunkSize(): int
@@ -47,7 +49,8 @@ class ARImport implements
         return [
             'nama_pegawai' => ['required', 'string'],
             'nip' => ['required', 'string'],
-            // add other validation rules per column
+            'email' => ['nullable', 'email'],
+            'password' => ['nullable', 'string'],
         ];
     }
 

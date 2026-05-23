@@ -9,6 +9,8 @@ class ARData extends Model
     protected $table = 'ar_data';
     protected $fillable = [
         'nip',
-        'username'
+        'username',
+        'email',
+        'password',
     ];
 }
