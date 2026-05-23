@@ -49,19 +49,11 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-Route::get('/dashboard', function () {
-    $user = Auth::user();
+use App\Http\Controllers\DashboardController;
 
-    if ($user?->role === 'admin') {
-        return redirect('/master-data');
-    }
-
-    if ($user?->role === 'ar') {
-        return redirect('/my-assignments');
-    }
-
-    return redirect('/');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
