@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\AssignArData;
+use App\Models\MasterData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
@@ -21,22 +22,38 @@ class AssignARImport implements
 {
     public function collection(Collection $collection)
     {
-        $data = $collection->map(function ($row) {
-            return [
-                'npwp' => $row['npwp'],
+        $rows = [];
+
+        foreach ($collection as $row) {
+            $npwp = $row['npwp'];
+            $master = MasterData::where('npwp', $npwp)->first();
+
+            if (! $master) {
+                // reject this row if no parent
+                Log::warning('Assign AR import skipped - master not found', [
+                    'npwp' => $npwp,
+                    'row' => $row,
+                ]);
+                continue;
+            }
+
+            $rows[] = [
+                'master_data_id' => $master->id,
                 'nip' => $row['nip'],
                 'period_year' => (int) $row['period_year'],
                 'period_month' => (int) $row['period_month'],
                 'updated_at' => now(),
                 'created_at' => now(),
             ];
-        })->toArray();
+        }
 
-        AssignArData::upsert(
-            $data,
-            ['npwp', 'period_year', 'period_month'],
-            ['nip', 'updated_at'],
-        );
+        if (! empty($rows)) {
+            AssignArData::upsert(
+                $rows,
+                ['master_data_id', 'period_year', 'period_month'],
+                ['nip', 'updated_at']
+            );
+        }
     }
 
     public function chunkSize(): int

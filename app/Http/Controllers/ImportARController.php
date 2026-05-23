@@ -77,4 +77,27 @@ class ImportARController extends Controller
             'processed_at' => $importFile->processed_at,
         ]);
     }
+
+    public function update(Request $request, ARData $arData)
+    {
+        $this->authorizeAdmin();
+
+        $request->validate([
+            'nip' => ['required', 'string'],
+            'username' => ['required', 'string'],
+        ]);
+
+        $arData->update($request->only(['nip', 'username']));
+
+        return response()->json($arData);
+    }
+
+    public function destroy(ARData $arData)
+    {
+        $this->authorizeAdmin();
+
+        $arData->delete();
+
+        return response()->json(['message' => 'Deleted']);
+    }
 }

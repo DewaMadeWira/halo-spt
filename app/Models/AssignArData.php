@@ -13,5 +13,11 @@ class AssignArData extends Model
         'nip',
         'period_year',
         'period_month',
+        'master_data_id',
     ];
+
+    public function masterData()
+    {
+        return $this->belongsTo(\App\Models\MasterData::class, 'master_data_id');
+    }
 }

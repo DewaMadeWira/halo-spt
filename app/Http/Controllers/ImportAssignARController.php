@@ -83,11 +83,18 @@ class ImportAssignARController extends Controller
     {
         $this->authorizeAdmin();
 
-        return AssignArData::orderBy('period_year', 'desc')
-            ->orderBy('period_month', 'desc')
-            ->orderBy('npwp')
+        return AssignArData::leftJoin('master_data', 'assign_ar_data.master_data_id', '=', 'master_data.id')
+            ->orderBy('assign_ar_data.period_year', 'desc')
+            ->orderBy('assign_ar_data.period_month', 'desc')
+            ->orderBy('master_data.npwp')
             ->limit(200)
-            ->get();
+            ->get([
+                'assign_ar_data.id',
+                'master_data.npwp as npwp',
+                'assign_ar_data.nip',
+                'assign_ar_data.period_year',
+                'assign_ar_data.period_month',
+            ]);
     }
 
     public function myRecords()
@@ -96,10 +103,10 @@ class ImportAssignARController extends Controller
 
         $user = Auth::user();
 
-        return AssignArData::where('nip', $user->nip)
-            ->leftJoin('master_data', 'assign_ar_data.npwp', '=', 'master_data.npwp')
+        return AssignArData::where('assign_ar_data.nip', $user->nip)
+            ->leftJoin('master_data', 'assign_ar_data.master_data_id', '=', 'master_data.id')
             ->select(
-                'assign_ar_data.npwp',
+                'master_data.npwp',
                 'master_data.taxpayer_name',
                 'master_data.email',
                 'master_data.whatsapp_number',
@@ -108,7 +115,48 @@ class ImportAssignARController extends Controller
             )
             ->orderBy('assign_ar_data.period_year', 'desc')
             ->orderBy('assign_ar_data.period_month', 'desc')
-            ->orderBy('assign_ar_data.npwp')
+            ->orderBy('master_data.npwp')
             ->get();
+    }
+
+    public function update(Request $request, AssignArData $assignArData)
+    {
+        $this->authorizeAdmin();
+
+        $request->validate([
+            'master_data_id' => ['required', 'integer', 'exists:master_data,id'],
+            'nip' => ['required', 'string'],
+            'period_year' => ['required', 'integer'],
+            'period_month' => ['required', 'integer'],
+        ]);
+
+        $assignArData->update($request->only([
+            'master_data_id',
+            'nip',
+            'period_year',
+            'period_month',
+        ]));
+
+        // return the updated record with npwp for frontend
+        $assignArData = AssignArData::leftJoin('master_data', 'assign_ar_data.master_data_id', '=', 'master_data.id')
+            ->where('assign_ar_data.id', $assignArData->id)
+            ->first([
+                'assign_ar_data.id',
+                'master_data.npwp as npwp',
+                'assign_ar_data.nip',
+                'assign_ar_data.period_year',
+                'assign_ar_data.period_month',
+            ]);
+
+        return response()->json($assignArData);
+    }
+
+    public function destroy(AssignArData $assignArData)
+    {
+        $this->authorizeAdmin();
+
+        $assignArData->delete();
+
+        return response()->json(['message' => 'Deleted']);
     }
 }

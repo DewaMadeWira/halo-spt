@@ -9,7 +9,8 @@ import {
     SidebarInset,
 } from "@/Components/ui/sidebar";
 import { PropsWithChildren } from "react";
-import { usePage } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
+import { Toaster } from "@/Components/ui/sonner";
 
 export default function SidebarLayout({ children }: PropsWithChildren) {
     const user = usePage().props.auth.user as { role?: string } | null;
@@ -84,6 +85,11 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                     </SidebarGroup>
                 </SidebarContent>
                 <SidebarFooter>
+                    <nav className="px-2 py-1">
+                        <Link href={route("logout")} method="post" as="button">
+                            Log Out
+                        </Link>
+                    </nav>
                     <div className="px-4 py-3 text-xs text-muted-foreground">
                         v0.1 — Test Sidebar
                     </div>
@@ -92,6 +98,7 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
             <SidebarInset className="bg-gray-100">
                 <SidebarTrigger />
                 {children}
+                <Toaster richColors closeButton position="top-right" />
             </SidebarInset>
         </SidebarProvider>
     );

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
+import Modal from "@/Components/Modal";
+import { toast } from "sonner";
 import {
     Popover,
     PopoverTrigger,
@@ -33,6 +35,183 @@ interface ARDataRecord {
     id: number;
     nip: string;
     username: string;
+}
+
+function EditARPopover({
+    row,
+    onSave,
+    onDelete,
+}: {
+    row: ARDataRecord;
+    onSave: (r: ARDataRecord) => void;
+    onDelete: (id: number) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [nip, setNip] = useState(row.nip);
+    const [username, setUsername] = useState(row.username);
+    const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+    const doSave = async () => {
+        setSaving(true);
+        setError(null);
+        try {
+            const { data } = await axios.put(
+                `/api/import-ar/records/${row.id}`,
+                {
+                    nip,
+                    username,
+                },
+            );
+            onSave(data);
+            setOpen(false);
+            toast.success("AR record saved", {
+                description: "Changes to the AR record have been saved.",
+            });
+        } catch (err: unknown) {
+            const msg = axios.isAxiosError(err)
+                ? (err.response?.data?.message ?? err.message)
+                : err instanceof Error
+                  ? err.message
+                  : "An unexpected error occurred.";
+            setError(msg);
+            toast.error("Save failed", { description: msg });
+        } finally {
+            setSaving(false);
+            setConfirmSaveOpen(false);
+        }
+    };
+
+    const doDelete = async () => {
+        setDeleting(true);
+        setError(null);
+        try {
+            await axios.delete(`/api/import-ar/records/${row.id}`);
+            onDelete(row.id);
+            setOpen(false);
+            toast.success("AR record deleted", {
+                description: "The AR record has been removed.",
+            });
+        } catch (err: unknown) {
+            const msg = axios.isAxiosError(err)
+                ? (err.response?.data?.message ?? err.message)
+                : "Failed to delete";
+            setError(msg);
+            toast.error("Delete failed", { description: msg });
+        } finally {
+            setDeleting(false);
+            setConfirmDeleteOpen(false);
+        }
+    };
+
+    return (
+        <>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline">
+                        Edit
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent side="right" className="w-72">
+                    <PopoverHeader>
+                        <PopoverTitle>Edit AR Record</PopoverTitle>
+                        <PopoverDescription />
+                    </PopoverHeader>
+                    <div className="space-y-2 pt-2">
+                        <label className="text-sm">NIP</label>
+                        <Input
+                            value={nip}
+                            onChange={(e) => setNip(e.target.value)}
+                        />
+                        <label className="text-sm">Username</label>
+                        <Input
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                        />
+                        {error ? (
+                            <p className="text-sm text-destructive">{error}</p>
+                        ) : null}
+                        <div className="flex gap-2">
+                            <Button
+                                className="flex-1"
+                                onClick={() => setConfirmSaveOpen(true)}
+                                disabled={saving}
+                            >
+                                {saving ? "Saving..." : "Save"}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => setConfirmDeleteOpen(true)}
+                            >
+                                Delete
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => setOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                </PopoverContent>
+            </Popover>
+
+            <Modal
+                show={confirmSaveOpen}
+                onClose={() => setConfirmSaveOpen(false)}
+                maxWidth="sm"
+            >
+                <div className="p-6">
+                    <h3 className="text-lg font-medium">Confirm save</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Are you sure you want to save changes?
+                    </p>
+                    <div className="mt-4 flex justify-end gap-2">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setConfirmSaveOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button onClick={doSave} disabled={saving}>
+                            {saving ? "Saving..." : "Confirm"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal
+                show={confirmDeleteOpen}
+                onClose={() => setConfirmDeleteOpen(false)}
+                maxWidth="sm"
+            >
+                <div className="p-6">
+                    <h3 className="text-lg font-medium">Confirm delete</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        This will permanently delete the AR record. Continue?
+                    </p>
+                    <div className="mt-4 flex justify-end gap-2">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setConfirmDeleteOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={doDelete}
+                            disabled={deleting}
+                        >
+                            {deleting ? "Deleting..." : "Delete"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        </>
+    );
 }
 
 export default function ARData() {
@@ -305,6 +484,7 @@ export default function ARData() {
                                 <TableRow>
                                     <TableHead>NIP</TableHead>
                                     <TableHead>Username</TableHead>
+                                    <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -312,6 +492,27 @@ export default function ARData() {
                                     <TableRow key={row.id}>
                                         <TableCell>{row.nip}</TableCell>
                                         <TableCell>{row.username}</TableCell>
+                                        <TableCell>
+                                            <EditARPopover
+                                                row={row}
+                                                onSave={(updated) => {
+                                                    setArData((prev) =>
+                                                        prev.map((r) =>
+                                                            r.id === updated.id
+                                                                ? updated
+                                                                : r,
+                                                        ),
+                                                    );
+                                                }}
+                                                onDelete={(id) => {
+                                                    setArData((prev) =>
+                                                        prev.filter(
+                                                            (r) => r.id !== id,
+                                                        ),
+                                                    );
+                                                }}
+                                            />
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
