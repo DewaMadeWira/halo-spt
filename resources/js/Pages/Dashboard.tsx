@@ -69,7 +69,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
 
                     <div className="flex flex-wrap items-center gap-3">
                         {isAdmin ? (
-                            <Button asChild>
+                            <Button asChild className="bg-blue-600">
                                 <Link href="/master-data">
                                     Manage Master Data
                                 </Link>
@@ -119,7 +119,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                     Recent activity
                                 </h2>
                             </div>
-                            <div className="rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            <div className="bg-amber-400 rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                                 {isAdmin ? "Assignments" : "My activity"}
                             </div>
                         </div>

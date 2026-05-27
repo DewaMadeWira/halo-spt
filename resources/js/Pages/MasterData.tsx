@@ -70,7 +70,7 @@ function EditMasterPopover({
                     taxpayer_name: taxpayerName,
                     email: email || null,
                     whatsapp_number: whatsapp || null,
-                },
+                }
             );
             onSave(data);
             setOpen(false);
@@ -79,10 +79,10 @@ function EditMasterPopover({
             });
         } catch (err: unknown) {
             const msg = axios.isAxiosError(err)
-                ? (err.response?.data?.message ?? err.message)
+                ? err.response?.data?.message ?? err.message
                 : err instanceof Error
-                  ? err.message
-                  : "An unexpected error occurred.";
+                ? err.message
+                : "An unexpected error occurred.";
             setError(msg);
             toast.error("Save failed", { description: msg });
         } finally {
@@ -103,7 +103,7 @@ function EditMasterPopover({
             });
         } catch (err: unknown) {
             const msg = axios.isAxiosError(err)
-                ? (err.response?.data?.message ?? "Failed to delete")
+                ? err.response?.data?.message ?? "Failed to delete"
                 : "Failed to delete";
             setError(msg);
             toast.error("Delete failed", { description: msg });
@@ -207,9 +207,8 @@ function EditMasterPopover({
                 <div className="p-6">
                     <h3 className="text-lg font-medium">Confirm delete</h3>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        This will permanently delete the master record. If it
-                        is still assigned to AR data the deletion will be
-                        rejected.
+                        This will permanently delete the master record. If it is
+                        still assigned to AR data the deletion will be rejected.
                     </p>
                     <div className="mt-4 flex justify-end gap-2">
                         <Button
@@ -260,7 +259,7 @@ export default function MasterData() {
     const fetchImports = async () => {
         try {
             const { data } = await axios.get<ImportFileRecord[]>(
-                "/api/master-data/imports",
+                "/api/master-data/imports"
             );
             setImports(data);
             setPageError(null);
@@ -272,7 +271,7 @@ export default function MasterData() {
     const fetchMasterData = async () => {
         try {
             const { data } = await axios.get<MasterDataRecord[]>(
-                "/api/master-data/records",
+                "/api/master-data/records"
             );
             setMasterData(data);
             setPageError(null);
@@ -303,11 +302,11 @@ export default function MasterData() {
         try {
             const response = await axios.post(
                 "/api/master-data/import/upload",
-                formData,
+                formData
             );
 
             await axios.post(
-                `/api/master-data/import/${response.data.id}/process`,
+                `/api/master-data/import/${response.data.id}/process`
             );
             await fetchImports();
             await fetchMasterData();
@@ -367,7 +366,10 @@ export default function MasterData() {
                             onOpenChange={setIsPopoverOpen}
                         >
                             <PopoverTrigger asChild>
-                                <Button variant="secondary">
+                                <Button
+                                    variant="secondary"
+                                    className="bg-blue-600 text-white"
+                                >
                                     Upload Excel
                                 </Button>
                             </PopoverTrigger>
@@ -391,7 +393,7 @@ export default function MasterData() {
                                         accept=".xlsx,.xls,.csv"
                                         onChange={(event) => {
                                             setSelectedFile(
-                                                event.target.files?.[0] ?? null,
+                                                event.target.files?.[0] ?? null
                                             );
                                             setUploadError(null);
                                         }}
@@ -453,13 +455,13 @@ export default function MasterData() {
                                         </TableCell>
                                         <TableCell>
                                             {new Date(
-                                                importFile.created_at,
+                                                importFile.created_at
                                             ).toLocaleString()}
                                         </TableCell>
                                         <TableCell>
                                             {importFile.processed_at
                                                 ? new Date(
-                                                      importFile.processed_at,
+                                                      importFile.processed_at
                                                   ).toLocaleString()
                                                 : "-"}
                                         </TableCell>
@@ -533,15 +535,15 @@ export default function MasterData() {
                                                         prev.map((r) =>
                                                             r.id === updated.id
                                                                 ? updated
-                                                                : r,
-                                                        ),
+                                                                : r
+                                                        )
                                                     )
                                                 }
                                                 onDelete={(id) =>
                                                     setMasterData((prev) =>
                                                         prev.filter(
-                                                            (r) => r.id !== id,
-                                                        ),
+                                                            (r) => r.id !== id
+                                                        )
                                                     )
                                                 }
                                             />

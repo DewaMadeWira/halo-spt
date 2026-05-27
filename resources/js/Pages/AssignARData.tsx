@@ -527,7 +527,7 @@ export default function AssignARData() {
                             onOpenChange={setIsPopoverOpen}
                         >
                             <PopoverTrigger asChild>
-                                <Button variant="secondary">
+                                <Button variant="secondary" className="bg-blue-600 text-white">
                                     Upload Excel
                                 </Button>
                             </PopoverTrigger>
