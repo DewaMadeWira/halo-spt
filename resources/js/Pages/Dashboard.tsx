@@ -124,7 +124,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                             </div>
                         </div>
 
-                        <div className="mt-6 h-[320px]">
+                        <div className="mt-6">
                             <ChartContainer
                                 id="dashboard-trend"
                                 config={{
@@ -133,6 +133,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                         color: "#0ea5e9",
                                     },
                                 }}
+                                className="h-[280px] w-full"
                             >
                                 <LineChart
                                     data={dashboard.chart.data}
@@ -156,6 +157,9 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                     <Tooltip
                                         content={<ChartTooltipContent />}
                                     />
+                                    <ChartLegend
+                                        content={<ChartLegendContent />}
+                                    />
                                     <Line
                                         type="monotone"
                                         dataKey="count"
@@ -166,7 +170,6 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                     />
                                 </LineChart>
                             </ChartContainer>
-                            <ChartLegend content={<ChartLegendContent />} />
                         </div>
                     </div>
 
@@ -186,7 +189,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
 
                                 <div className="mt-6 space-y-3">
                                     {Object.entries(
-                                        dashboard.statusCounts ?? {},
+                                        dashboard.statusCounts ?? {}
                                     ).map(([status, count]) => (
                                         <div
                                             key={status}
@@ -241,8 +244,8 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                                     </span>
                                                 </div>
                                                 <div className="mt-3 text-sm text-muted-foreground">
-                                                    {(assignment.email ??
-                                                    assignment.whatsapp_number) ? (
+                                                    {assignment.email ??
+                                                    assignment.whatsapp_number ? (
                                                         <>
                                                             {assignment.email
                                                                 ? `Email: ${assignment.email}`
@@ -260,7 +263,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                                     )}
                                                 </div>
                                             </div>
-                                        ),
+                                        )
                                     )}
                                     {(dashboard.recentAssignments ?? [])
                                         .length === 0 ? (
