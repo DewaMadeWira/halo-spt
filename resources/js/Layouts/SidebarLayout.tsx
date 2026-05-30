@@ -60,10 +60,10 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                                         AR Data
                                     </Link>
                                     <Link
-                                        href={route("assign-ar-data")}
+                                        href={route("monthly-spt")}
                                         className="block py-2 px-3 rounded text-blue-200 hover:bg-blue-800 hover:text-white transition-colors text-sm"
                                     >
-                                        Assign AR Data
+                                        Monthly SPT
                                     </Link>
                                 </>
                             ) : null}

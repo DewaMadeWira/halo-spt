@@ -14,13 +14,42 @@ import {
 } from "@/Components/ui/table";
 import SidebarLayout from "@/Layouts/SidebarLayout";
 
-interface AssignedRecord {
+type TaskStatus = "pending" | "contacted" | "done";
+
+interface SptRecord {
+    id: number;
     npwp: string;
     taxpayer_name: string | null;
     email: string | null;
     whatsapp_number: string | null;
     period_year: number;
     period_month: number;
+    status: TaskStatus;
+    contacted_at: string | null;
+    done_at: string | null;
+    notes: string | null;
+}
+
+const STATUS_LABEL: Record<TaskStatus, string> = {
+    pending: "Pending",
+    contacted: "Contacted",
+    done: "Done",
+};
+
+const STATUS_CLASS: Record<TaskStatus, string> = {
+    pending: "bg-yellow-100 text-yellow-800",
+    contacted: "bg-blue-100 text-blue-800",
+    done: "bg-green-100 text-green-800",
+};
+
+function StatusBadge({ status }: { status: TaskStatus }) {
+    return (
+        <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[status]}`}
+        >
+            {STATUS_LABEL[status]}
+        </span>
+    );
 }
 
 function formatMonthLabel(year: number, month: number) {
@@ -32,18 +61,9 @@ function formatMonthLabel(year: number, month: number) {
 
 function normalizeWhatsappNumber(value: string) {
     const digits = value.replace(/\D/g, "");
-    if (!digits) {
-        return "";
-    }
-
-    if (digits.startsWith("62")) {
-        return digits;
-    }
-
-    if (digits.startsWith("0")) {
-        return `62${digits.slice(1)}`;
-    }
-
+    if (!digits) return "";
+    if (digits.startsWith("62")) return digits;
+    if (digits.startsWith("0")) return `62${digits.slice(1)}`;
     return digits;
 }
 
@@ -51,19 +71,14 @@ const defaultEmailSubject = "Pengingat SPT Masa {{period}}";
 const defaultEmailBody = `Yth. Bapak/Ibu Pimpinan {{company}},\n\nBerdasarkan pantauan sistem kami, Anda belum melakukan pelaporan SPT Masa untuk bulan {{period}} yang telah melewati jatuh tempo.\n\nMohon segera laporkan kewajiban perpajakan Anda (NPWP: {{npwp}}) sesegera mungkin.\n\nJika ada kendala, silakan hubungi kami.\n\nSalam,\n{{ar_name}} - Account Representative Anda`;
 const defaultWhatsappBody = `Yth. Bapak/Ibu Pimpinan {{company}},\n\nMohon segera menindaklanjuti pelaporan SPT Masa untuk bulan {{period}} (NPWP: {{npwp}}). Jika butuh bantuan, silakan hubungi saya.\n\nTerima kasih.\n{{ar_name}}`;
 
-function formatTemplate(template: string, row: AssignedRecord, arName: string) {
+function formatTemplate(template: string, row: SptRecord, arName: string) {
     return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
         switch (token) {
-            case "company":
-                return row.taxpayer_name ?? row.npwp;
-            case "npwp":
-                return row.npwp;
-            case "period":
-                return formatMonthLabel(row.period_year, row.period_month);
-            case "ar_name":
-                return arName;
-            default:
-                return "";
+            case "company": return row.taxpayer_name ?? row.npwp;
+            case "npwp": return row.npwp;
+            case "period": return formatMonthLabel(row.period_year, row.period_month);
+            case "ar_name": return arName;
+            default: return "";
         }
     });
 }
@@ -73,19 +88,18 @@ export default function MyAssignments() {
     const user = (
         (page.props as any)?.auth as { user?: { name: string } } | undefined
     )?.user ?? { name: "Account Representative Anda" };
-    const [records, setRecords] = useState<AssignedRecord[]>([]);
+
+    const [records, setRecords] = useState<SptRecord[]>([]);
     const [search, setSearch] = useState("");
     const [pageError, setPageError] = useState<string | null>(null);
+    const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [emailSubject, setEmailSubject] = useState(defaultEmailSubject);
     const [emailBody, setEmailBody] = useState(defaultEmailBody);
     const [whatsappBody, setWhatsappBody] = useState(defaultWhatsappBody);
 
     useEffect(() => {
         const saved = window.localStorage.getItem("assignmentTemplates");
-        if (!saved) {
-            return;
-        }
-
+        if (!saved) return;
         try {
             const parsed = JSON.parse(saved);
             setEmailSubject(parsed.emailSubject ?? defaultEmailSubject);
@@ -98,9 +112,7 @@ export default function MyAssignments() {
 
     const fetchRecords = async () => {
         try {
-            const { data } = await axios.get<AssignedRecord[]>(
-                "/api/assign-ar/my-records",
-            );
+            const { data } = await axios.get<SptRecord[]>("/api/monthly-spt/my-records");
             setRecords(data);
             setPageError(null);
         } catch (error: unknown) {
@@ -122,13 +134,38 @@ export default function MyAssignments() {
         fetchRecords();
     }, []);
 
-    const filteredRecords = useMemo(() => {
-        if (!search.trim()) {
-            return records;
+    const updateStatus = async (record: SptRecord, status: TaskStatus) => {
+        setUpdatingId(record.id);
+        try {
+            await axios.patch(`/api/monthly-spt/${record.id}/status`, { status });
+            setRecords((prev) =>
+                prev.map((r) =>
+                    r.id === record.id
+                        ? {
+                              ...r,
+                              status,
+                              contacted_at:
+                                  status === "contacted" || status === "done"
+                                      ? r.contacted_at ?? new Date().toISOString()
+                                      : r.contacted_at,
+                              done_at:
+                                  status === "done"
+                                      ? r.done_at ?? new Date().toISOString()
+                                      : r.done_at,
+                          }
+                        : r,
+                ),
+            );
+        } catch {
+            // silently ignore — record stays at old status
+        } finally {
+            setUpdatingId(null);
         }
+    };
 
+    const filteredRecords = useMemo(() => {
+        if (!search.trim()) return records;
         const normalized = search.trim().toLowerCase();
-
         return records.filter((record) =>
             [record.npwp, record.taxpayer_name ?? ""]
                 .join(" ")
@@ -138,20 +175,17 @@ export default function MyAssignments() {
     }, [records, search]);
 
     const groupedAssignments = useMemo(() => {
-        const groups: Record<string, AssignedRecord[]> = {};
-
+        const groups: Record<string, SptRecord[]> = {};
         filteredRecords.forEach((record) => {
-            const key = `${record.period_year}-${String(
-                record.period_month,
-            ).padStart(2, "0")}`;
-            if (!groups[key]) {
-                groups[key] = [];
-            }
+            const key = `${record.period_year}-${String(record.period_month).padStart(2, "0")}`;
+            if (!groups[key]) groups[key] = [];
             groups[key].push(record);
         });
-
         return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
     }, [filteredRecords]);
+
+    const totalDone = records.filter((r) => r.status === "done").length;
+    const totalPending = records.filter((r) => r.status === "pending").length;
 
     return (
         <SidebarLayout>
@@ -160,7 +194,7 @@ export default function MyAssignments() {
                     <div>
                         <h1 className="text-2xl">My Assignments</h1>
                         <p className="text-sm text-muted-foreground">
-                            View assigned companies by assignment month.
+                            Track and update your SPT collection tasks by period.
                         </p>
                     </div>
                 </div>
@@ -171,39 +205,42 @@ export default function MyAssignments() {
                     </div>
                 ) : null}
 
-                <div className="mt-10 bg-white rounded-md p-6 shadow-sm">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <h4 className="text-lg font-medium">
-                                Total assigned companies
-                            </h4>
-                            <p className="mt-1 text-3xl font-semibold">
-                                {records.length}
-                            </p>
-                        </div>
-                        <div className="w-full max-w-sm">
-                            <Input
-                                placeholder="Search by NPWP or name"
-                                value={search}
-                                onChange={(event) =>
-                                    setSearch(event.target.value)
-                                }
-                            />
-                        </div>
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="bg-white rounded-md p-5 shadow-sm">
+                        <p className="text-sm text-muted-foreground">Total tasks</p>
+                        <p className="mt-1 text-3xl font-semibold">{records.length}</p>
+                    </div>
+                    <div className="bg-white rounded-md p-5 shadow-sm">
+                        <p className="text-sm text-muted-foreground">Pending</p>
+                        <p className="mt-1 text-3xl font-semibold text-yellow-600">{totalPending}</p>
+                    </div>
+                    <div className="bg-white rounded-md p-5 shadow-sm">
+                        <p className="text-sm text-muted-foreground">Done</p>
+                        <p className="mt-1 text-3xl font-semibold text-green-600">{totalDone}</p>
                     </div>
                 </div>
 
-                <div className="mt-10 space-y-8">
+                <div className="mt-4 bg-white rounded-md p-5 shadow-sm">
+                    <Input
+                        placeholder="Search by NPWP or company name"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="max-w-sm"
+                    />
+                </div>
+
+                <div className="mt-6 space-y-8">
                     {groupedAssignments.length === 0 ? (
                         <div className="rounded-md bg-white p-6 shadow-sm">
                             <p className="text-sm text-muted-foreground">
-                                No assignments found for the selected search or
-                                assigned period.
+                                No tasks found.
                             </p>
                         </div>
                     ) : (
                         groupedAssignments.map(([periodKey, entries]) => {
                             const [year, month] = periodKey.split("-");
+                            const periodDone = entries.filter((e) => e.status === "done").length;
+
                             return (
                                 <section
                                     key={periodKey}
@@ -212,17 +249,10 @@ export default function MyAssignments() {
                                     <div className="mb-4 flex items-center justify-between">
                                         <div>
                                             <h2 className="text-lg font-semibold">
-                                                {formatMonthLabel(
-                                                    +year,
-                                                    +month,
-                                                )}
+                                                {formatMonthLabel(+year, +month)}
                                             </h2>
                                             <p className="text-sm text-muted-foreground">
-                                                {entries.length} assigned
-                                                company
-                                                {entries.length === 1
-                                                    ? ""
-                                                    : "ies"}
+                                                {periodDone} / {entries.length} done
                                             </p>
                                         </div>
                                     </div>
@@ -232,120 +262,88 @@ export default function MyAssignments() {
                                             <TableRow>
                                                 <TableHead>NPWP</TableHead>
                                                 <TableHead>Company</TableHead>
-                                                <TableHead>Email</TableHead>
-                                                <TableHead>WhatsApp</TableHead>
+                                                <TableHead>Status</TableHead>
                                                 <TableHead>Contact</TableHead>
+                                                <TableHead>Update</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {entries.map((row) => {
-                                                const whatsappNumber =
-                                                    row.whatsapp_number
-                                                        ? normalizeWhatsappNumber(
-                                                              row.whatsapp_number,
-                                                          )
-                                                        : "";
-                                                const subject = formatTemplate(
-                                                    emailSubject,
-                                                    row,
-                                                    user.name,
-                                                );
-                                                const body = formatTemplate(
-                                                    emailBody,
-                                                    row,
-                                                    user.name,
-                                                );
-                                                const whatsappText =
-                                                    formatTemplate(
-                                                        whatsappBody,
-                                                        row,
-                                                        user.name,
-                                                    );
+                                                const whatsappNumber = row.whatsapp_number
+                                                    ? normalizeWhatsappNumber(row.whatsapp_number)
+                                                    : "";
+                                                const subject = formatTemplate(emailSubject, row, user.name);
+                                                const body = formatTemplate(emailBody, row, user.name);
+                                                const whatsappText = formatTemplate(whatsappBody, row, user.name);
                                                 const gmailHref = row.email
-                                                    ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
-                                                          row.email,
-                                                      )}&su=${encodeURIComponent(
-                                                          subject,
-                                                      )}&body=${encodeURIComponent(
-                                                          body,
-                                                      )}`
+                                                    ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(row.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
                                                     : undefined;
-                                                const whatsappHref =
-                                                    whatsappNumber
-                                                        ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-                                                              whatsappText,
-                                                          )}`
-                                                        : undefined;
+                                                const whatsappHref = whatsappNumber
+                                                    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappText)}`
+                                                    : undefined;
+                                                const isUpdating = updatingId === row.id;
 
                                                 return (
-                                                    <TableRow
-                                                        key={`${row.npwp}-${periodKey}`}
-                                                    >
+                                                    <TableRow key={row.id}>
+                                                        <TableCell>{row.npwp}</TableCell>
+                                                        <TableCell>{row.taxpayer_name ?? "-"}</TableCell>
                                                         <TableCell>
-                                                            {row.npwp}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {row.taxpayer_name ??
-                                                                "-"}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {row.email ?? "-"}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {row.whatsapp_number ??
-                                                                "-"}
+                                                            <StatusBadge status={row.status} />
                                                         </TableCell>
                                                         <TableCell className="space-x-2">
-                                                            <Button
-                                                                asChild
-                                                                variant="outline"
-                                                                size="sm"
-                                                            >
+                                                            <Button asChild variant="outline" size="sm">
                                                                 <a
-                                                                    href={
-                                                                        gmailHref ??
-                                                                        "#"
-                                                                    }
+                                                                    href={gmailHref ?? "#"}
                                                                     target="_blank"
                                                                     rel="noreferrer"
-                                                                    className={
-                                                                        !gmailHref
-                                                                            ? "pointer-events-none opacity-50"
-                                                                            : undefined
-                                                                    }
+                                                                    className={!gmailHref ? "pointer-events-none opacity-50" : undefined}
                                                                 >
                                                                     Email
                                                                 </a>
                                                             </Button>
-                                                            <Button
-                                                                asChild
-                                                                variant="outline"
-                                                                size="sm"
-                                                            >
+                                                            <Button asChild variant="outline" size="sm">
                                                                 <a
-                                                                    href={
-                                                                        whatsappHref ??
-                                                                        "#"
-                                                                    }
+                                                                    href={whatsappHref ?? "#"}
                                                                     target="_blank"
                                                                     rel="noreferrer"
-                                                                    className={
-                                                                        !whatsappHref
-                                                                            ? "pointer-events-none opacity-50"
-                                                                            : undefined
-                                                                    }
+                                                                    className={!whatsappHref ? "pointer-events-none opacity-50" : undefined}
                                                                 >
                                                                     WhatsApp
                                                                 </a>
                                                             </Button>
+                                                        </TableCell>
+                                                        <TableCell className="space-x-2">
+                                                            {row.status === "pending" && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    disabled={isUpdating}
+                                                                    onClick={() => updateStatus(row, "contacted")}
+                                                                >
+                                                                    Mark Contacted
+                                                                </Button>
+                                                            )}
+                                                            {row.status !== "done" && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    disabled={isUpdating}
+                                                                    onClick={() => updateStatus(row, "done")}
+                                                                >
+                                                                    Mark Done
+                                                                </Button>
+                                                            )}
+                                                            {row.status === "done" && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    Completed
+                                                                </span>
+                                                            )}
                                                         </TableCell>
                                                     </TableRow>
                                                 );
                                             })}
                                         </TableBody>
                                         <TableCaption>
-                                            Data is filtered by your assigned
-                                            NIP and the selected month.
+                                            Filtered by your NIP for this period.
                                         </TableCaption>
                                     </Table>
                                 </section>

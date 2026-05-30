@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -27,13 +26,13 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('ARData');
     })->name('ar-data');
 
-    Route::get('/assign-ar-data', function () {
+    Route::get('/monthly-spt', function () {
         if (Auth::user()?->role !== 'admin') {
             abort(403);
         }
 
-        return Inertia::render('AssignARData');
-    })->name('assign-ar-data');
+        return Inertia::render('MonthlySpt');
+    })->name('monthly-spt');
 
     Route::get('/my-assignments', function () {
         if (Auth::user()?->role !== 'ar') {

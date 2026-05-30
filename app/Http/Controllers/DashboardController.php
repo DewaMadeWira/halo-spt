@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ARData;
-use App\Models\AssignArData;
 use App\Models\ImportFile;
 use App\Models\MasterData;
-use Illuminate\Http\Request;
+use App\Models\MonthlySpt;
+use App\Models\MonthlySptImport;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -32,9 +32,10 @@ class DashboardController extends Controller
                 ->pluck('total', 'status')
                 ->toArray();
 
-            $assignmentTrend = AssignArData::selectRaw(
-                'period_year, period_month, count(*) as total',
+            $assignmentTrend = MonthlySptImport::selectRaw(
+                'period_year, period_month, sum(imported_rows) as total',
             )
+                ->where('status', 'done')
                 ->groupBy('period_year', 'period_month')
                 ->orderByDesc('period_year')
                 ->orderByDesc('period_month')
@@ -61,9 +62,9 @@ class DashboardController extends Controller
                     'description' => 'Registered AR accounts in the system.',
                 ],
                 [
-                    'title' => 'Assignments',
-                    'value' => AssignArData::count(),
-                    'description' => 'Total AR assignments loaded from imports.',
+                    'title' => 'Monthly SPT tasks',
+                    'value' => MonthlySpt::count(),
+                    'description' => 'Total SPT collection tasks across all periods.',
                 ],
                 [
                     'title' => 'Pending imports',
@@ -75,7 +76,7 @@ class DashboardController extends Controller
             ];
 
             $dashboardData['chart'] = [
-                'title' => 'Assignment volume',
+                'title' => 'SPT task volume by period',
                 'data' => $assignmentTrend,
             ];
 
@@ -93,16 +94,19 @@ class DashboardController extends Controller
                     ];
                 });
 
-            $dashboardData['recentAssignments'] = AssignArData::leftJoin('master_data', 'assign_ar_data.master_data_id', '=', 'master_data.id')
+            $dashboardData['recentAssignments'] = MonthlySpt::join('monthly_spt_imports', 'monthly_spts.monthly_spt_import_id', '=', 'monthly_spt_imports.id')
+                ->join('master_data', 'monthly_spts.master_data_id', '=', 'master_data.id')
+                ->join('ar_data', 'monthly_spts.ar_data_id', '=', 'ar_data.id')
                 ->select(
-                    'assign_ar_data.nip',
-                    'master_data.npwp as npwp',
-                    'master_data.taxpayer_name as taxpayer_name',
-                    'assign_ar_data.period_year',
-                    'assign_ar_data.period_month',
+                    'ar_data.nip',
+                    'master_data.npwp',
+                    'master_data.taxpayer_name',
+                    'monthly_spt_imports.period_year',
+                    'monthly_spt_imports.period_month',
+                    'monthly_spts.status',
                 )
-                ->orderByDesc('assign_ar_data.period_year')
-                ->orderByDesc('assign_ar_data.period_month')
+                ->orderByDesc('monthly_spt_imports.period_year')
+                ->orderByDesc('monthly_spt_imports.period_month')
                 ->orderBy('master_data.npwp')
                 ->limit(5)
                 ->get()
@@ -112,83 +116,102 @@ class DashboardController extends Controller
                         'taxpayer_name' => $record->taxpayer_name,
                         'nip' => $record->nip,
                         'period' => sprintf('%d-%02d', $record->period_year, $record->period_month),
+                        'status' => $record->status,
                     ];
                 });
 
             $dashboardData['statusCounts'] = $importStatusCounts;
         } elseif ($user->role === 'ar') {
-            $assignmentTrend = AssignArData::where('nip', $user->nip)
-                ->selectRaw('period_year, period_month, count(*) as total')
-                ->groupBy('period_year', 'period_month')
-                ->orderByDesc('period_year')
-                ->orderByDesc('period_month')
-                ->limit(6)
-                ->get()
-                ->reverse()
-                ->values()
-                ->map(function ($row) {
-                    return [
-                        'label' => sprintf('%d-%02d', $row->period_year, $row->period_month),
-                        'count' => (int) $row->total,
-                    ];
-                });
+            $arData = ARData::where('nip', $user->nip)->first();
 
-            $mostRecentAssignment = AssignArData::where('nip', $user->nip)
-                ->orderByDesc('period_year')
-                ->orderByDesc('period_month')
-                ->first();
+            if ($arData) {
+                $assignmentTrend = MonthlySpt::join('monthly_spt_imports', 'monthly_spts.monthly_spt_import_id', '=', 'monthly_spt_imports.id')
+                    ->where('monthly_spts.ar_data_id', $arData->id)
+                    ->selectRaw('monthly_spt_imports.period_year, monthly_spt_imports.period_month, count(*) as total')
+                    ->groupBy('monthly_spt_imports.period_year', 'monthly_spt_imports.period_month')
+                    ->orderByDesc('monthly_spt_imports.period_year')
+                    ->orderByDesc('monthly_spt_imports.period_month')
+                    ->limit(6)
+                    ->get()
+                    ->reverse()
+                    ->values()
+                    ->map(function ($row) {
+                        return [
+                            'label' => sprintf('%d-%02d', $row->period_year, $row->period_month),
+                            'count' => (int) $row->total,
+                        ];
+                    });
 
-            $dashboardData['summary'] = [
-                [
-                    'title' => 'Assigned companies',
-                    'value' => AssignArData::where('nip', $user->nip)->count(),
-                    'description' => 'Total company assignments for your account.',
-                ],
-                [
-                    'title' => 'Unique taxpayers',
-                    'value' => AssignArData::where('nip', $user->nip)->distinct('master_data_id')->count('master_data_id'),
-                    'description' => 'Different taxpayer entities you are assigned to.',
-                ],
-                [
-                    'title' => 'Latest assignment',
-                    'value' => $mostRecentAssignment ? sprintf('%d-%02d', $mostRecentAssignment->period_year, $mostRecentAssignment->period_month) : '—',
-                    'description' => 'Most recent assignment month.',
-                ],
-                [
-                    'title' => 'Accessible screen',
-                    'value' => 'My Assignments',
-                    'description' => 'Use the sidebar to access your assignment details.',
-                ],
-            ];
+                $mostRecentImport = MonthlySpt::join('monthly_spt_imports', 'monthly_spts.monthly_spt_import_id', '=', 'monthly_spt_imports.id')
+                    ->where('monthly_spts.ar_data_id', $arData->id)
+                    ->orderByDesc('monthly_spt_imports.period_year')
+                    ->orderByDesc('monthly_spt_imports.period_month')
+                    ->select('monthly_spt_imports.period_year', 'monthly_spt_imports.period_month')
+                    ->first();
 
-            $dashboardData['chart'] = [
-                'title' => 'Your assignment trend',
-                'data' => $assignmentTrend,
-            ];
+                $totalTasks   = MonthlySpt::where('ar_data_id', $arData->id)->count();
+                $doneTasks    = MonthlySpt::where('ar_data_id', $arData->id)->where('status', 'done')->count();
+                $pendingTasks = MonthlySpt::where('ar_data_id', $arData->id)->where('status', 'pending')->count();
 
-            $dashboardData['recentAssignments'] = AssignArData::where('assign_ar_data.nip', $user->nip)
-                ->leftJoin('master_data', 'assign_ar_data.master_data_id', '=', 'master_data.id')
-                ->select(
-                    'master_data.npwp as npwp',
-                    'master_data.taxpayer_name as taxpayer_name',
-                    'master_data.email as email',
-                    'master_data.whatsapp_number as whatsapp_number',
-                    'assign_ar_data.period_year',
-                    'assign_ar_data.period_month',
-                )
-                ->orderByDesc('assign_ar_data.period_year')
-                ->orderByDesc('assign_ar_data.period_month')
-                ->limit(5)
-                ->get()
-                ->map(function ($record) {
-                    return [
-                        'npwp' => $record->npwp,
-                        'taxpayer_name' => $record->taxpayer_name,
-                        'email' => $record->email,
-                        'whatsapp_number' => $record->whatsapp_number,
-                        'period' => sprintf('%d-%02d', $record->period_year, $record->period_month),
-                    ];
-                });
+                $dashboardData['summary'] = [
+                    [
+                        'title' => 'Total tasks',
+                        'value' => $totalTasks,
+                        'description' => 'Total SPT collection tasks assigned to you.',
+                    ],
+                    [
+                        'title' => 'Completed',
+                        'value' => $doneTasks,
+                        'description' => 'Tasks you have marked as done.',
+                    ],
+                    [
+                        'title' => 'Pending',
+                        'value' => $pendingTasks,
+                        'description' => 'Tasks still waiting to be followed up.',
+                    ],
+                    [
+                        'title' => 'Latest period',
+                        'value' => $mostRecentImport ? sprintf('%d-%02d', $mostRecentImport->period_year, $mostRecentImport->period_month) : '—',
+                        'description' => 'Most recent assignment period.',
+                    ],
+                ];
+
+                $dashboardData['chart'] = [
+                    'title' => 'Your task trend',
+                    'data' => $assignmentTrend,
+                ];
+
+                $dashboardData['recentAssignments'] = MonthlySpt::join('monthly_spt_imports', 'monthly_spts.monthly_spt_import_id', '=', 'monthly_spt_imports.id')
+                    ->join('master_data', 'monthly_spts.master_data_id', '=', 'master_data.id')
+                    ->where('monthly_spts.ar_data_id', $arData->id)
+                    ->select(
+                        'master_data.npwp',
+                        'master_data.taxpayer_name',
+                        'master_data.email',
+                        'master_data.whatsapp_number',
+                        'monthly_spt_imports.period_year',
+                        'monthly_spt_imports.period_month',
+                        'monthly_spts.status',
+                    )
+                    ->orderByDesc('monthly_spt_imports.period_year')
+                    ->orderByDesc('monthly_spt_imports.period_month')
+                    ->limit(5)
+                    ->get()
+                    ->map(function ($record) {
+                        return [
+                            'npwp' => $record->npwp,
+                            'taxpayer_name' => $record->taxpayer_name,
+                            'email' => $record->email,
+                            'whatsapp_number' => $record->whatsapp_number,
+                            'period' => sprintf('%d-%02d', $record->period_year, $record->period_month),
+                            'status' => $record->status,
+                        ];
+                    });
+            } else {
+                $dashboardData['summary'] = [];
+                $dashboardData['chart'] = ['title' => 'Your task trend', 'data' => []];
+                $dashboardData['recentAssignments'] = [];
+            }
         }
 
         return Inertia::render('Dashboard', [

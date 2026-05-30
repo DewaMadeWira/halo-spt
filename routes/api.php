@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ImportARController;
-use App\Http\Controllers\ImportAssignARController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportMasterDataController;
 use App\Http\Controllers\ImportMonthlySptController;
@@ -29,17 +28,12 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/master-data/records/{masterData}', [ImportMasterDataController::class, 'update']);
     Route::delete('/master-data/records/{masterData}', [ImportMasterDataController::class, 'destroy']);
 
-    Route::post('/assign-ar/import/upload', [ImportAssignARController::class, 'upload']);
-    Route::post('/assign-ar/import/{importFile}/process', [ImportAssignARController::class, 'process']);
-    Route::get('/assign-ar/imports', [ImportAssignARController::class, 'index']);
-    Route::get('/assign-ar/import/{importFile}/status', [ImportAssignARController::class, 'status']);
-    Route::get('/assign-ar/records', [ImportAssignARController::class, 'records']);
-    Route::put('/assign-ar/records/{assignArData}', [ImportAssignARController::class, 'update']);
-    Route::delete('/assign-ar/records/{assignArData}', [ImportAssignARController::class, 'destroy']);
-    Route::get('/assign-ar/my-records', [ImportAssignARController::class, 'myRecords']);
-
-    Route::post('monthly-spt/upload', [ImportMonthlySptController::class, 'upload']);
-    Route::post('monthly-spt/{monthlySptImport}/process', [ImportMonthlySptController::class, 'process']);
-    Route::get('monthly-spt/{monthlySptImport}/status', [ImportMonthlySptController::class, 'status']);
-    Route::get('monthly-spt/{monthlySptImport}/invalid-rows', [ImportMonthlySptController::class, 'invalidRows']);
+    Route::post('/monthly-spt/upload', [ImportMonthlySptController::class, 'upload']);
+    Route::post('/monthly-spt/{monthlySptImport}/process', [ImportMonthlySptController::class, 'process']);
+    Route::get('/monthly-spt/{monthlySptImport}/status', [ImportMonthlySptController::class, 'status']);
+    Route::get('/monthly-spt/{monthlySptImport}/invalid-rows', [ImportMonthlySptController::class, 'invalidRows']);
+    Route::get('/monthly-spt/imports', [ImportMonthlySptController::class, 'imports']);
+    Route::get('/monthly-spt/records', [ImportMonthlySptController::class, 'records']);
+    Route::get('/monthly-spt/my-records', [ImportMonthlySptController::class, 'myRecords']);
+    Route::patch('/monthly-spt/{monthlySpt}/status', [ImportMonthlySptController::class, 'updateStatus']);
 });
