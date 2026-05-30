@@ -26,13 +26,23 @@ class ImportARController extends Controller
             ->get();
     }
 
-    public function records()
+    public function records(Request $request)
     {
         $this->authorizeAdmin();
 
-        return ARData::orderBy('username')
-            ->limit(200)
-            ->get();
+        $query = ARData::query();
+
+        if ($search = $request->input('search')) {
+            $like = '%' . $search . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('nip', 'like', $like)
+                  ->orWhere('username', 'like', $like);
+            });
+        }
+
+        $perPage = min(max((int) $request->input('per_page', 50), 10), 100);
+
+        return response()->json($query->orderBy('username')->paginate($perPage));
     }
 
     public function upload(Request $request)

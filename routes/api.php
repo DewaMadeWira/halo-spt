@@ -34,6 +34,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/monthly-spt/{monthlySptImport}/invalid-rows', [ImportMonthlySptController::class, 'invalidRows']);
     Route::get('/monthly-spt/imports', [ImportMonthlySptController::class, 'imports']);
     Route::get('/monthly-spt/records', [ImportMonthlySptController::class, 'records']);
+    Route::get('/monthly-spt/my-periods', [ImportMonthlySptController::class, 'myPeriods']);
     Route::get('/monthly-spt/my-records', [ImportMonthlySptController::class, 'myRecords']);
     Route::patch('/monthly-spt/{monthlySpt}/status', [ImportMonthlySptController::class, 'updateStatus']);
 });

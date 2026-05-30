@@ -72,13 +72,23 @@ class ImportMasterDataController extends Controller
         ]);
     }
 
-    public function records()
+    public function records(Request $request)
     {
         $this->authorizeAdmin();
 
-        return MasterData::orderBy('taxpayer_name')
-            ->limit(200)
-            ->get();
+        $query = MasterData::query();
+
+        if ($search = $request->input('search')) {
+            $like = '%' . $search . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('npwp', 'like', $like)
+                  ->orWhere('taxpayer_name', 'like', $like);
+            });
+        }
+
+        $perPage = min(max((int) $request->input('per_page', 50), 10), 100);
+
+        return response()->json($query->orderBy('taxpayer_name')->paginate($perPage));
     }
 
     public function update(Request $request, MasterData $masterData)

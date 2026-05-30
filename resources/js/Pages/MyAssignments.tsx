@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import axios from "axios";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/Components/ui/select";
 import {
     Table,
     TableHeader,
@@ -10,11 +17,19 @@ import {
     TableRow,
     TableHead,
     TableCell,
-    TableCaption,
 } from "@/Components/ui/table";
+import {
+    DataTablePagination,
+    type PaginationMeta,
+} from "@/Components/ui/data-table-pagination";
 import SidebarLayout from "@/Layouts/SidebarLayout";
 
 type TaskStatus = "pending" | "contacted" | "done";
+
+interface Period {
+    period_year: number;
+    period_month: number;
+}
 
 interface SptRecord {
     id: number;
@@ -28,6 +43,17 @@ interface SptRecord {
     contacted_at: string | null;
     done_at: string | null;
     notes: string | null;
+}
+
+interface MyRecordsResponse {
+    data: SptRecord[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    stats: { total: number; pending: number; done: number };
 }
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
@@ -44,15 +70,22 @@ const STATUS_CLASS: Record<TaskStatus, string> = {
 
 function StatusBadge({ status }: { status: TaskStatus }) {
     return (
-        <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[status]}`}
-        >
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[status]}`}>
             {STATUS_LABEL[status]}
         </span>
     );
 }
 
-function formatMonthLabel(year: number, month: number) {
+function periodKey(year: number, month: number) {
+    return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function parsePeriodKey(key: string): { year: number; month: number } {
+    const [y, m] = key.split("-");
+    return { year: Number(y), month: Number(m) };
+}
+
+function formatPeriodLabel(year: number, month: number) {
     return new Date(year, month - 1).toLocaleString("default", {
         month: "long",
         year: "numeric",
@@ -75,24 +108,40 @@ function formatTemplate(template: string, row: SptRecord, arName: string) {
     return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
         switch (token) {
             case "company": return row.taxpayer_name ?? row.npwp;
-            case "npwp": return row.npwp;
-            case "period": return formatMonthLabel(row.period_year, row.period_month);
+            case "npwp":    return row.npwp;
+            case "period":  return formatPeriodLabel(row.period_year, row.period_month);
             case "ar_name": return arName;
-            default: return "";
+            default:        return "";
         }
     });
 }
 
 export default function MyAssignments() {
-    const page = usePage();
+    const inertiaPage = usePage();
     const user = (
-        (page.props as any)?.auth as { user?: { name: string } } | undefined
+        (inertiaPage.props as any)?.auth as { user?: { name: string } } | undefined
     )?.user ?? { name: "Account Representative Anda" };
 
+    // Period list
+    const [periods, setPeriods] = useState<Period[]>([]);
+    const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+    const [periodsLoading, setPeriodsLoading] = useState(true);
+
+    // Table state
     const [records, setRecords] = useState<SptRecord[]>([]);
+    const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+    const [stats, setStats] = useState({ total: 0, pending: 0, done: 0 });
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(50);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+    const [fetchKey, setFetchKey] = useState(0);
+    const [loading, setLoading] = useState(false);
     const [pageError, setPageError] = useState<string | null>(null);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+    // Message templates
     const [emailSubject, setEmailSubject] = useState(defaultEmailSubject);
     const [emailBody, setEmailBody] = useState(defaultEmailBody);
     const [whatsappBody, setWhatsappBody] = useState(defaultWhatsappBody);
@@ -105,57 +154,125 @@ export default function MyAssignments() {
             setEmailSubject(parsed.emailSubject ?? defaultEmailSubject);
             setEmailBody(parsed.emailBody ?? defaultEmailBody);
             setWhatsappBody(parsed.whatsappBody ?? defaultWhatsappBody);
-        } catch {
-            // invalid saved templates, ignore
-        }
+        } catch { /* invalid saved templates */ }
     }, []);
 
-    const fetchRecords = async () => {
+    // 1. Fetch available periods on mount
+    useEffect(() => {
+        (async () => {
+            setPeriodsLoading(true);
+            try {
+                const { data } = await axios.get<Period[]>("/api/monthly-spt/my-periods");
+                setPeriods(data);
+                if (data.length > 0) {
+                    setSelectedPeriod(periodKey(data[0].period_year, data[0].period_month));
+                }
+            } catch (error: unknown) {
+                if (axios.isAxiosError(error)) {
+                    setPageError(error.response?.data?.message ?? error.message);
+                }
+            } finally {
+                setPeriodsLoading(false);
+            }
+        })();
+    }, []);
+
+    // Debounce search — batch page reset + commit
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setPage(1);
+            setDebouncedSearch(search);
+        }, search ? 400 : 0);
+        return () => clearTimeout(t);
+    }, [search]);
+
+    // 2. Fetch records whenever period / filters / page change
+    const fetchRecords = useCallback(async () => {
+        if (!selectedPeriod) return;
+
+        const { year, month } = parsePeriodKey(selectedPeriod);
+        setLoading(true);
         try {
-            const { data } = await axios.get<SptRecord[]>("/api/monthly-spt/my-records");
-            setRecords(data);
+            const { data } = await axios.get<MyRecordsResponse>("/api/monthly-spt/my-records", {
+                params: {
+                    period_year:  year,
+                    period_month: month,
+                    page,
+                    per_page:     perPage,
+                    search:       debouncedSearch || undefined,
+                    status:       statusFilter !== "all" ? statusFilter : undefined,
+                },
+            });
+            setRecords(data.data);
+            setPagination({
+                current_page: data.current_page,
+                last_page:    data.last_page,
+                per_page:     data.per_page,
+                total:        data.total,
+                from:         data.from,
+                to:           data.to,
+            });
+            setStats(data.stats);
             setPageError(null);
         } catch (error: unknown) {
             if (axios.isAxiosError(error)) {
-                setPageError(
-                    error.response?.data?.message ??
-                        error.response?.statusText ??
-                        error.message,
-                );
+                setPageError(error.response?.data?.message ?? error.message);
             } else if (error instanceof Error) {
                 setPageError(error.message);
             } else {
                 setPageError("Unable to load assignments.");
             }
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [selectedPeriod, page, perPage, debouncedSearch, statusFilter, fetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         fetchRecords();
-    }, []);
+    }, [fetchRecords]);
+
+    // Period change resets all filters
+    const handlePeriodChange = (val: string) => {
+        setPage(1);
+        setSearch("");
+        setDebouncedSearch("");
+        setStatusFilter("all");
+        setSelectedPeriod(val);
+    };
+
+    const handleStatusFilterChange = (val: string) => {
+        setPage(1);
+        setStatusFilter(val as TaskStatus | "all");
+    };
+
+    const handlePerPageChange = (val: number) => {
+        setPage(1);
+        setPerPage(val);
+    };
 
     const updateStatus = async (record: SptRecord, status: TaskStatus) => {
         setUpdatingId(record.id);
         try {
             await axios.patch(`/api/monthly-spt/${record.id}/status`, { status });
+            // Optimistic UI update
             setRecords((prev) =>
                 prev.map((r) =>
                     r.id === record.id
                         ? {
                               ...r,
                               status,
-                              contacted_at:
-                                  status === "contacted" || status === "done"
-                                      ? r.contacted_at ?? new Date().toISOString()
-                                      : r.contacted_at,
-                              done_at:
-                                  status === "done"
-                                      ? r.done_at ?? new Date().toISOString()
-                                      : r.done_at,
+                              contacted_at: (status === "contacted" || status === "done")
+                                  ? (r.contacted_at ?? new Date().toISOString())
+                                  : r.contacted_at,
+                              done_at: status === "done"
+                                  ? (r.done_at ?? new Date().toISOString())
+                                  : r.done_at,
                           }
                         : r,
                 ),
             );
+            // Refresh stats in background
+            setFetchKey((k) => k + 1);
         } catch {
             // silently ignore — record stays at old status
         } finally {
@@ -163,38 +280,19 @@ export default function MyAssignments() {
         }
     };
 
-    const filteredRecords = useMemo(() => {
-        if (!search.trim()) return records;
-        const normalized = search.trim().toLowerCase();
-        return records.filter((record) =>
-            [record.npwp, record.taxpayer_name ?? ""]
-                .join(" ")
-                .toLowerCase()
-                .includes(normalized),
-        );
-    }, [records, search]);
-
-    const groupedAssignments = useMemo(() => {
-        const groups: Record<string, SptRecord[]> = {};
-        filteredRecords.forEach((record) => {
-            const key = `${record.period_year}-${String(record.period_month).padStart(2, "0")}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(record);
-        });
-        return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-    }, [filteredRecords]);
-
-    const totalDone = records.filter((r) => r.status === "done").length;
-    const totalPending = records.filter((r) => r.status === "pending").length;
+    const selectedPeriodLabel = selectedPeriod
+        ? formatPeriodLabel(parsePeriodKey(selectedPeriod).year, parsePeriodKey(selectedPeriod).month)
+        : "";
 
     return (
         <SidebarLayout>
             <div className="p-5">
+                {/* Header */}
                 <div className="flex justify-between bg-white p-7 rounded-md items-center">
                     <div>
                         <h1 className="text-2xl">My Assignments</h1>
                         <p className="text-sm text-muted-foreground">
-                            Track and update your SPT collection tasks by period.
+                            Track and update your SPT collection tasks.
                         </p>
                     </div>
                 </div>
@@ -205,152 +303,187 @@ export default function MyAssignments() {
                     </div>
                 ) : null}
 
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div className="bg-white rounded-md p-5 shadow-sm">
-                        <p className="text-sm text-muted-foreground">Total tasks</p>
-                        <p className="mt-1 text-3xl font-semibold">{records.length}</p>
+                {/* Empty state — no assignments at all */}
+                {!periodsLoading && periods.length === 0 ? (
+                    <div className="mt-10 bg-white rounded-md p-10 shadow-sm text-center">
+                        <p className="text-muted-foreground">You have no assignments yet.</p>
                     </div>
-                    <div className="bg-white rounded-md p-5 shadow-sm">
-                        <p className="text-sm text-muted-foreground">Pending</p>
-                        <p className="mt-1 text-3xl font-semibold text-yellow-600">{totalPending}</p>
-                    </div>
-                    <div className="bg-white rounded-md p-5 shadow-sm">
-                        <p className="text-sm text-muted-foreground">Done</p>
-                        <p className="mt-1 text-3xl font-semibold text-green-600">{totalDone}</p>
-                    </div>
-                </div>
-
-                <div className="mt-4 bg-white rounded-md p-5 shadow-sm">
-                    <Input
-                        placeholder="Search by NPWP or company name"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-sm"
-                    />
-                </div>
-
-                <div className="mt-6 space-y-8">
-                    {groupedAssignments.length === 0 ? (
-                        <div className="rounded-md bg-white p-6 shadow-sm">
-                            <p className="text-sm text-muted-foreground">
-                                No tasks found.
-                            </p>
+                ) : (
+                    <>
+                        {/* Period selector */}
+                        <div className="mt-6 bg-white rounded-md p-5 shadow-sm flex flex-wrap items-center gap-4">
+                            <span className="text-sm font-medium text-muted-foreground">Period</span>
+                            <Select
+                                value={selectedPeriod}
+                                onValueChange={handlePeriodChange}
+                                disabled={periodsLoading}
+                            >
+                                <SelectTrigger className="w-48">
+                                    <SelectValue placeholder={periodsLoading ? "Loading…" : "Select period"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {periods.map((p) => (
+                                        <SelectItem
+                                            key={periodKey(p.period_year, p.period_month)}
+                                            value={periodKey(p.period_year, p.period_month)}
+                                        >
+                                            {formatPeriodLabel(p.period_year, p.period_month)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {selectedPeriodLabel && (
+                                <span className="text-sm text-muted-foreground">
+                                    {periods.length} period{periods.length !== 1 ? "s" : ""} available
+                                </span>
+                            )}
                         </div>
-                    ) : (
-                        groupedAssignments.map(([periodKey, entries]) => {
-                            const [year, month] = periodKey.split("-");
-                            const periodDone = entries.filter((e) => e.status === "done").length;
 
-                            return (
-                                <section
-                                    key={periodKey}
-                                    className="bg-white rounded-md p-6 shadow-sm"
-                                >
-                                    <div className="mb-4 flex items-center justify-between">
-                                        <div>
-                                            <h2 className="text-lg font-semibold">
-                                                {formatMonthLabel(+year, +month)}
-                                            </h2>
-                                            <p className="text-sm text-muted-foreground">
-                                                {periodDone} / {entries.length} done
-                                            </p>
-                                        </div>
-                                    </div>
+                        {/* Stats for selected period */}
+                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div className="bg-white rounded-md p-5 shadow-sm">
+                                <p className="text-sm text-muted-foreground">Total tasks</p>
+                                <p className="mt-1 text-3xl font-semibold">{stats.total.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-md p-5 shadow-sm">
+                                <p className="text-sm text-muted-foreground">Pending</p>
+                                <p className="mt-1 text-3xl font-semibold text-yellow-600">{stats.pending.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-md p-5 shadow-sm">
+                                <p className="text-sm text-muted-foreground">Done</p>
+                                <p className="mt-1 text-3xl font-semibold text-green-600">{stats.done.toLocaleString()}</p>
+                            </div>
+                        </div>
 
-                                    <Table>
-                                        <TableHeader>
+                        {/* Records table */}
+                        <div className="mt-4 bg-white rounded-md p-6 shadow-sm">
+                            {/* Filter bar */}
+                            <div className="mb-4 flex flex-wrap items-center gap-3">
+                                <Input
+                                    placeholder="Search NPWP or company name"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="max-w-xs"
+                                />
+                                <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                                    <SelectTrigger className="w-36">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All statuses</SelectItem>
+                                        <SelectItem value="pending">Pending</SelectItem>
+                                        <SelectItem value="contacted">Contacted</SelectItem>
+                                        <SelectItem value="done">Done</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className={loading ? "opacity-60 pointer-events-none transition-opacity" : "transition-opacity"}>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>NPWP</TableHead>
+                                            <TableHead>Company</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Contact</TableHead>
+                                            <TableHead>Update</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {records.length === 0 ? (
                                             <TableRow>
-                                                <TableHead>NPWP</TableHead>
-                                                <TableHead>Company</TableHead>
-                                                <TableHead>Status</TableHead>
-                                                <TableHead>Contact</TableHead>
-                                                <TableHead>Update</TableHead>
+                                                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                                                    {debouncedSearch || statusFilter !== "all"
+                                                        ? "No tasks match the current filter."
+                                                        : "No tasks for this period."}
+                                                </TableCell>
                                             </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {entries.map((row) => {
-                                                const whatsappNumber = row.whatsapp_number
-                                                    ? normalizeWhatsappNumber(row.whatsapp_number)
-                                                    : "";
-                                                const subject = formatTemplate(emailSubject, row, user.name);
-                                                const body = formatTemplate(emailBody, row, user.name);
-                                                const whatsappText = formatTemplate(whatsappBody, row, user.name);
-                                                const gmailHref = row.email
-                                                    ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(row.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-                                                    : undefined;
-                                                const whatsappHref = whatsappNumber
-                                                    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappText)}`
-                                                    : undefined;
-                                                const isUpdating = updatingId === row.id;
+                                        ) : records.map((row) => {
+                                            const whatsappNumber = row.whatsapp_number
+                                                ? normalizeWhatsappNumber(row.whatsapp_number)
+                                                : "";
+                                            const subject      = formatTemplate(emailSubject, row, user.name);
+                                            const body         = formatTemplate(emailBody, row, user.name);
+                                            const whatsappText = formatTemplate(whatsappBody, row, user.name);
+                                            const gmailHref    = row.email
+                                                ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(row.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+                                                : undefined;
+                                            const whatsappHref = whatsappNumber
+                                                ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappText)}`
+                                                : undefined;
+                                            const isUpdating = updatingId === row.id;
 
-                                                return (
-                                                    <TableRow key={row.id}>
-                                                        <TableCell>{row.npwp}</TableCell>
-                                                        <TableCell>{row.taxpayer_name ?? "-"}</TableCell>
-                                                        <TableCell>
-                                                            <StatusBadge status={row.status} />
-                                                        </TableCell>
-                                                        <TableCell className="space-x-2">
-                                                            <Button asChild variant="outline" size="sm">
-                                                                <a
-                                                                    href={gmailHref ?? "#"}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className={!gmailHref ? "pointer-events-none opacity-50" : undefined}
-                                                                >
-                                                                    Email
-                                                                </a>
+                                            return (
+                                                <TableRow key={row.id}>
+                                                    <TableCell>{row.npwp}</TableCell>
+                                                    <TableCell>{row.taxpayer_name ?? "-"}</TableCell>
+                                                    <TableCell>
+                                                        <StatusBadge status={row.status} />
+                                                    </TableCell>
+                                                    <TableCell className="space-x-2">
+                                                        <Button asChild variant="outline" size="sm">
+                                                            <a
+                                                                href={gmailHref ?? "#"}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className={!gmailHref ? "pointer-events-none opacity-50" : undefined}
+                                                            >
+                                                                Email
+                                                            </a>
+                                                        </Button>
+                                                        <Button asChild variant="outline" size="sm">
+                                                            <a
+                                                                href={whatsappHref ?? "#"}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className={!whatsappHref ? "pointer-events-none opacity-50" : undefined}
+                                                            >
+                                                                WhatsApp
+                                                            </a>
+                                                        </Button>
+                                                    </TableCell>
+                                                    <TableCell className="space-x-2">
+                                                        {row.status === "pending" && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={isUpdating}
+                                                                onClick={() => updateStatus(row, "contacted")}
+                                                            >
+                                                                Mark Contacted
                                                             </Button>
-                                                            <Button asChild variant="outline" size="sm">
-                                                                <a
-                                                                    href={whatsappHref ?? "#"}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className={!whatsappHref ? "pointer-events-none opacity-50" : undefined}
-                                                                >
-                                                                    WhatsApp
-                                                                </a>
+                                                        )}
+                                                        {row.status !== "done" && (
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={isUpdating}
+                                                                onClick={() => updateStatus(row, "done")}
+                                                            >
+                                                                Mark Done
                                                             </Button>
-                                                        </TableCell>
-                                                        <TableCell className="space-x-2">
-                                                            {row.status === "pending" && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    disabled={isUpdating}
-                                                                    onClick={() => updateStatus(row, "contacted")}
-                                                                >
-                                                                    Mark Contacted
-                                                                </Button>
-                                                            )}
-                                                            {row.status !== "done" && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    disabled={isUpdating}
-                                                                    onClick={() => updateStatus(row, "done")}
-                                                                >
-                                                                    Mark Done
-                                                                </Button>
-                                                            )}
-                                                            {row.status === "done" && (
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    Completed
-                                                                </span>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })}
-                                        </TableBody>
-                                        <TableCaption>
-                                            Filtered by your NIP for this period.
-                                        </TableCaption>
-                                    </Table>
-                                </section>
-                            );
-                        })
-                    )}
-                </div>
+                                                        )}
+                                                        {row.status === "done" && (
+                                                            <span className="text-xs text-muted-foreground">Completed</span>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            {pagination && (
+                                <DataTablePagination
+                                    meta={pagination}
+                                    onPageChange={setPage}
+                                    onPerPageChange={handlePerPageChange}
+                                    loading={loading}
+                                />
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
         </SidebarLayout>
     );
