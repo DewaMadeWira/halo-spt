@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import axios from "axios";
+import { ImportInvalidRows } from "@/Components/ImportInvalidRows";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { toast } from "sonner";
@@ -82,6 +83,7 @@ function getErrorMessage(error: unknown): string {
 
 export default function MonthlySpt() {
     const [imports, setImports] = useState<ImportRecord[]>([]);
+    const [expandedImportId, setExpandedImportId] = useState<number | null>(null);
     const [records, setRecords] = useState<SptRecord[]>([]);
     const [pagination, setPagination] = useState<PaginationMeta | null>(null);
     const [page, setPage] = useState(1);
@@ -301,24 +303,45 @@ export default function MonthlySpt() {
                                         </TableCell>
                                     </TableRow>
                                 ) : imports.map((imp) => (
-                                    <TableRow key={imp.id}>
-                                        <TableCell className="max-w-[180px] truncate">{imp.original_filename}</TableCell>
-                                        <TableCell>{imp.period_year}-{String(imp.period_month).padStart(2, "0")}</TableCell>
-                                        <TableCell>
-                                            <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">
-                                                {imp.status}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>{imp.imported_rows}</TableCell>
-                                        <TableCell>{imp.invalid_rows}</TableCell>
-                                        <TableCell>{new Date(imp.created_at).toLocaleString()}</TableCell>
-                                        <TableCell>{imp.processed_at ? new Date(imp.processed_at).toLocaleString() : "-"}</TableCell>
-                                        <TableCell>
-                                            <Button variant="outline" size="sm" onClick={() => handleProcess(imp.id)} disabled={imp.status === "processing"}>
-                                                {imp.status === "processing" ? "Processing" : "Re-process"}
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
+                                    <Fragment key={imp.id}>
+                                        <TableRow>
+                                            <TableCell className="max-w-[180px] truncate">{imp.original_filename}</TableCell>
+                                            <TableCell>{imp.period_year}-{String(imp.period_month).padStart(2, "0")}</TableCell>
+                                            <TableCell>
+                                                <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">
+                                                    {imp.status}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell>{imp.imported_rows}</TableCell>
+                                            <TableCell>
+                                                {imp.invalid_rows > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        className="font-medium text-destructive underline-offset-2 hover:underline"
+                                                        onClick={() => setExpandedImportId((id) => (id === imp.id ? null : imp.id))}
+                                                    >
+                                                        {imp.invalid_rows} {expandedImportId === imp.id ? "▲" : "▼"}
+                                                    </button>
+                                                ) : (
+                                                    imp.invalid_rows
+                                                )}
+                                            </TableCell>
+                                            <TableCell>{new Date(imp.created_at).toLocaleString()}</TableCell>
+                                            <TableCell>{imp.processed_at ? new Date(imp.processed_at).toLocaleString() : "-"}</TableCell>
+                                            <TableCell>
+                                                <Button variant="outline" size="sm" onClick={() => handleProcess(imp.id)} disabled={imp.status === "processing"}>
+                                                    {imp.status === "processing" ? "Processing" : "Re-process"}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                        {expandedImportId === imp.id && imp.invalid_rows > 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="p-0">
+                                                    <ImportInvalidRows endpoint={`/api/monthly-spt/${imp.id}/invalid-rows`} />
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : null}
+                                    </Fragment>
                                 ))}
                             </TableBody>
                         </Table>

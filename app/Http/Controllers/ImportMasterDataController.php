@@ -68,8 +68,20 @@ class ImportMasterDataController extends Controller
 
         return response()->json([
             'status' => $importFile->status,
+            'total_rows' => $importFile->total_rows,
+            'imported_rows' => $importFile->imported_rows,
+            'invalid_rows' => $importFile->invalid_rows,
             'processed_at' => $importFile->processed_at,
         ]);
+    }
+
+    public function invalidRows(ImportFile $importFile)
+    {
+        $this->authorizeAdmin();
+
+        return response()->json(
+            $importFile->invalidRows()->orderBy('row_number')->get()
+        );
     }
 
     public function records(Request $request)

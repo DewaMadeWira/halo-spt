@@ -22,11 +22,18 @@ class ProcessImportFile implements ShouldQueue
 
     public function handle(): void
     {
-        $this->importFile->update(['status' => 'processing']);
+        // Reset counters and clear prior invalid rows so re-processing is idempotent.
+        $this->importFile->invalidRows()->delete();
+        $this->importFile->update([
+            'status'        => 'processing',
+            'total_rows'    => 0,
+            'imported_rows' => 0,
+            'invalid_rows'  => 0,
+        ]);
 
         try {
-            // Excel::import(new NpwpImport(), storage_path('app/' . $this->importFile->file_path)); # DEFAULT FILE PATH
-            Excel::import(new NpwpImport(), $this->importFile->file_path, 'local'); // WINDOWS FILE PATH
+            // Excel::import(new NpwpImport($this->importFile), storage_path('app/' . $this->importFile->file_path)); # DEFAULT FILE PATH
+            Excel::import(new NpwpImport($this->importFile), $this->importFile->file_path, 'local'); // WINDOWS FILE PATH
 
             $this->importFile->update([
                 'status'       => 'done',

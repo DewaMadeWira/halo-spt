@@ -14,6 +14,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/import-ar/upload', [ImportARController::class, 'upload']);
     Route::post('/import-ar/{importFile}/process', [ImportARController::class, 'process']);
     Route::get('/import-ar/{importFile}/status', [ImportARController::class, 'status']);
+    Route::get('/import-ar/{importFile}/invalid-rows', [ImportARController::class, 'invalidRows']);
     Route::get('/import-ar/imports', [ImportARController::class, 'index']);
     Route::get('/import-ar/records', [ImportARController::class, 'records']);
     Route::post('/import-ar/records', [ImportARController::class, 'store']);
@@ -24,6 +25,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/master-data/import/{importFile}/process', [ImportMasterDataController::class, 'process']);
     Route::get('/master-data/imports', [ImportMasterDataController::class, 'index']);
     Route::get('/master-data/import/{importFile}/status', [ImportMasterDataController::class, 'status']);
+    Route::get('/master-data/import/{importFile}/invalid-rows', [ImportMasterDataController::class, 'invalidRows']);
     Route::get('/master-data/records', [ImportMasterDataController::class, 'records']);
     Route::put('/master-data/records/{masterData}', [ImportMasterDataController::class, 'update']);
     Route::delete('/master-data/records/{masterData}', [ImportMasterDataController::class, 'destroy']);

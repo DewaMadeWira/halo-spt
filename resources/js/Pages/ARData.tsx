@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import axios from "axios";
+import { ImportInvalidRows } from "@/Components/ImportInvalidRows";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import Modal from "@/Components/Modal";
@@ -31,6 +32,9 @@ interface ImportFileRecord {
     id: number;
     original_name: string;
     status: string;
+    total_rows: number;
+    imported_rows: number;
+    invalid_rows: number;
     created_at: string;
     processed_at: string | null;
 }
@@ -156,6 +160,7 @@ function EditARPopover({
 
 export default function ARData() {
     const [imports, setImports] = useState<ImportFileRecord[]>([]);
+    const [expandedImportId, setExpandedImportId] = useState<number | null>(null);
     const [arData, setArData] = useState<ARDataRecord[]>([]);
     const [pagination, setPagination] = useState<PaginationMeta | null>(null);
     const [page, setPage] = useState(1);
@@ -376,6 +381,8 @@ export default function ARData() {
                                 <TableRow>
                                     <TableHead>File name</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Imported</TableHead>
+                                    <TableHead>Invalid</TableHead>
                                     <TableHead>Uploaded at</TableHead>
                                     <TableHead>Processed at</TableHead>
                                     <TableHead>Action</TableHead>
@@ -384,22 +391,45 @@ export default function ARData() {
                             <TableBody>
                                 {imports.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">No uploaded files yet.</TableCell>
+                                        <TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">No uploaded files yet.</TableCell>
                                     </TableRow>
                                 ) : imports.map((f) => (
-                                    <TableRow key={f.id}>
-                                        <TableCell>{f.original_name}</TableCell>
-                                        <TableCell>
-                                            <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">{f.status}</span>
-                                        </TableCell>
-                                        <TableCell>{new Date(f.created_at).toLocaleString()}</TableCell>
-                                        <TableCell>{f.processed_at ? new Date(f.processed_at).toLocaleString() : "-"}</TableCell>
-                                        <TableCell>
-                                            <Button variant="outline" size="sm" onClick={() => handleProcess(f.id)} disabled={f.status === "processing"}>
-                                                {f.status === "processing" ? "Processing" : "Process"}
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
+                                    <Fragment key={f.id}>
+                                        <TableRow>
+                                            <TableCell>{f.original_name}</TableCell>
+                                            <TableCell>
+                                                <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">{f.status}</span>
+                                            </TableCell>
+                                            <TableCell>{f.imported_rows}</TableCell>
+                                            <TableCell>
+                                                {f.invalid_rows > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        className="font-medium text-destructive underline-offset-2 hover:underline"
+                                                        onClick={() => setExpandedImportId((id) => (id === f.id ? null : f.id))}
+                                                    >
+                                                        {f.invalid_rows} {expandedImportId === f.id ? "▲" : "▼"}
+                                                    </button>
+                                                ) : (
+                                                    f.invalid_rows
+                                                )}
+                                            </TableCell>
+                                            <TableCell>{new Date(f.created_at).toLocaleString()}</TableCell>
+                                            <TableCell>{f.processed_at ? new Date(f.processed_at).toLocaleString() : "-"}</TableCell>
+                                            <TableCell>
+                                                <Button variant="outline" size="sm" onClick={() => handleProcess(f.id)} disabled={f.status === "processing"}>
+                                                    {f.status === "processing" ? "Processing" : "Process"}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                        {expandedImportId === f.id && f.invalid_rows > 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="p-0">
+                                                    <ImportInvalidRows endpoint={`/api/import-ar/${f.id}/invalid-rows`} />
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : null}
+                                    </Fragment>
                                 ))}
                             </TableBody>
                         </Table>

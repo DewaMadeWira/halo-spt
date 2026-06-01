@@ -298,11 +298,6 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                                         <Button asChild variant="outline">
                                             <Link href="/ar-data">AR Data</Link>
                                         </Button>
-                                        <Button asChild variant="outline">
-                                            <Link href="/assign-ar-data">
-                                                Assign AR Data
-                                            </Link>
-                                        </Button>
                                     </>
                                 ) : (
                                     <Button asChild variant="outline">
