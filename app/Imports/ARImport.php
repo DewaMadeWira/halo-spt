@@ -9,12 +9,15 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class ARImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
+    use RemembersChunkOffset;
+
     public function __construct(
         private ImportFileAR $importFile
     ) {}
@@ -35,8 +38,9 @@ class ARImport implements ToCollection, WithHeadingRow, WithChunkReading
             $defaultPassword = (string) config('import.default_ar_password', 'password');
 
             foreach ($collection as $index => $row) {
-                // Excel row number — +2 accounts for heading row and 0-index
-                $rowNumber = $index + 2;
+                // Per-chunk collections re-key from 0, so add the chunk's spreadsheet
+                // start row (getChunkOffset()) to recover the true Excel row number.
+                $rowNumber = $this->getChunkOffset() + $index;
                 $username = trim((string) ($row['nama_pegawai'] ?? ''));
                 $nip      = trim((string) ($row['nip'] ?? ''));
                 $email    = trim((string) ($row['email'] ?? ''));

@@ -40,7 +40,11 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must be GREATER than the longest a job can run. Large Excel imports
+            // can take several minutes; the old 90s default caused the queue to
+            // re-reserve and re-run an in-progress import, corrupting its counters
+            // and leaving it stuck in "processing".
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 7200),
             'after_commit' => false,
         ],
 

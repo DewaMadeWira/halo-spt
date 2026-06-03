@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
@@ -16,9 +17,28 @@ class ProcessImportFile implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 0;   // no timeout for large files
+    // Run once only — a partially-completed import must never be auto-retried.
+    public int $tries = 1;
+
+    // Finite, and kept BELOW the queue's retry_after so the job can never be
+    // re-reserved while still running. (Ignored on Windows where pcntl is absent;
+    // retry_after is the real guard there.)
+    public int $timeout = 7000;
 
     public function __construct(public ImportFile $importFile) {}
+
+    /**
+     * Prevent a second worker from running this same import concurrently if the
+     * reservation ever lapses; the duplicate attempt is dropped, not released.
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('import-master-' . $this->importFile->id))
+                ->dontRelease()
+                ->expireAfter($this->timeout + 60),
+        ];
+    }
 
     public function handle(): void
     {
