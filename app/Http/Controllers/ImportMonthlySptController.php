@@ -13,7 +13,7 @@ class ImportMonthlySptController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'file'         => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'file'         => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:51200'],
             'period_month' => ['required', 'integer', 'min:1', 'max:12'],
             'period_year'  => ['required', 'integer', 'min:2000'],
         ]);

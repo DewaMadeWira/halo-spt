@@ -11,10 +11,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class ARImport implements ToCollection, WithHeadingRow, WithChunkReading
+class ARImport implements ToCollection, WithHeadingRow, WithChunkReading, WithCalculatedFormulas
 {
     use RemembersChunkOffset;
 

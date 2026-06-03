@@ -12,7 +12,7 @@ class ImportController extends Controller
     {
         $request->validate(
             [
-                'file' => ['required', 'file', 'mimes:xlsx,xls,csv']
+                'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:51200']
             ]
         );
         $path = $request->file('file')->store('imports');
