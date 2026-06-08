@@ -147,14 +147,14 @@ export default function MyAssignments() {
     const [whatsappBody, setWhatsappBody] = useState(defaultWhatsappBody);
 
     useEffect(() => {
-        const saved = window.localStorage.getItem("assignmentTemplates");
-        if (!saved) return;
-        try {
-            const parsed = JSON.parse(saved);
-            setEmailSubject(parsed.emailSubject ?? defaultEmailSubject);
-            setEmailBody(parsed.emailBody ?? defaultEmailBody);
-            setWhatsappBody(parsed.whatsappBody ?? defaultWhatsappBody);
-        } catch { /* invalid saved templates */ }
+        (async () => {
+            try {
+                const { data } = await axios.get("/api/assignment-templates");
+                setEmailSubject(data.email_subject ?? defaultEmailSubject);
+                setEmailBody(data.email_body ?? defaultEmailBody);
+                setWhatsappBody(data.whatsapp_body ?? defaultWhatsappBody);
+            } catch { /* fall back to defaults */ }
+        })();
     }, []);
 
     // 1. Fetch available periods on mount

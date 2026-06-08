@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
+import axios from "axios";
 import { toast } from "sonner";
 import { Input } from "@/Components/ui/input";
 import { Textarea } from "@/Components/ui/textarea";
@@ -38,33 +39,48 @@ export default function AssignmentTemplates() {
         "Yth. Bapak/Ibu Pimpinan {{company}},\n\nMohon segera menindaklanjuti pelaporan SPT Masa untuk bulan {{period}} (NPWP: {{npwp}}). Jika butuh bantuan, silakan hubungi saya.\n\nTerima kasih.\n{{ar_name}}",
     );
 
-    useEffect(() => {
-        const saved = window.localStorage.getItem("assignmentTemplates");
-        if (!saved) {
-            return;
-        }
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-        try {
-            const parsed = JSON.parse(saved);
-            setEmailSubject(parsed.emailSubject ?? emailSubject);
-            setEmailBody(parsed.emailBody ?? emailBody);
-            setWhatsappBody(parsed.whatsappBody ?? whatsappBody);
-        } catch {
-            // ignore invalid stored value
-        }
+    useEffect(() => {
+        (async () => {
+            try {
+                const { data } = await axios.get("/api/assignment-templates");
+                setEmailSubject(data.email_subject ?? emailSubject);
+                setEmailBody(data.email_body ?? emailBody);
+                setWhatsappBody(data.whatsapp_body ?? whatsappBody);
+            } catch (error: unknown) {
+                if (axios.isAxiosError(error)) {
+                    toast.error(
+                        error.response?.data?.message ??
+                            "Failed to load templates.",
+                    );
+                }
+            } finally {
+                setLoading(false);
+            }
+        })();
     }, []);
 
-    const handleSaveTemplates = () => {
-        const payload = {
-            emailSubject,
-            emailBody,
-            whatsappBody,
-        };
-        window.localStorage.setItem(
-            "assignmentTemplates",
-            JSON.stringify(payload),
-        );
-        toast.success("Template saved successfully.");
+    const handleSaveTemplates = async () => {
+        setSaving(true);
+        try {
+            await axios.put("/api/assignment-templates", {
+                email_subject: emailSubject,
+                email_body: emailBody,
+                whatsapp_body: whatsappBody,
+            });
+            toast.success("Template saved successfully.");
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error)) {
+                toast.error(
+                    error.response?.data?.message ??
+                        "Failed to save templates.",
+                );
+            }
+        } finally {
+            setSaving(false);
+        }
     };
 
     const sampleRecord: AssignedRecord = {
@@ -104,8 +120,12 @@ export default function AssignmentTemplates() {
                             reminders.
                         </p>
                     </div>
-                    <Button onClick={handleSaveTemplates} size="sm">
-                        Save templates
+                    <Button
+                        onClick={handleSaveTemplates}
+                        size="sm"
+                        disabled={loading || saving}
+                    >
+                        {saving ? "Saving…" : "Save templates"}
                     </Button>
                 </div>
 

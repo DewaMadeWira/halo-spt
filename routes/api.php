@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AssignmentTemplateController;
 use App\Http\Controllers\ImportARController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportMasterDataController;
@@ -39,4 +40,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/monthly-spt/my-periods', [ImportMonthlySptController::class, 'myPeriods']);
     Route::get('/monthly-spt/my-records', [ImportMonthlySptController::class, 'myRecords']);
     Route::patch('/monthly-spt/{monthlySpt}/status', [ImportMonthlySptController::class, 'updateStatus']);
+
+    Route::get('/assignment-templates', [AssignmentTemplateController::class, 'show']);
+    Route::put('/assignment-templates', [AssignmentTemplateController::class, 'update']);
 });
