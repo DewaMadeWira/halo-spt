@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SptType;
 use App\Models\ARData;
 use App\Models\MonthlySpt;
 use App\Models\MonthlySptImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ImportMonthlySptController extends Controller
 {
@@ -16,6 +18,7 @@ class ImportMonthlySptController extends Controller
             'file'         => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:51200'],
             'period_month' => ['required', 'integer', 'min:1', 'max:12'],
             'period_year'  => ['required', 'integer', 'min:2000'],
+            'spt_type'     => ['required', Rule::in(SptType::values())],
         ]);
 
         $path = $request->file('file')->store('imports/monthly-spt');
@@ -25,6 +28,7 @@ class ImportMonthlySptController extends Controller
             'original_filename' => $request->file('file')->getClientOriginalName(),
             'period_month'      => $request->integer('period_month'),
             'period_year'       => $request->integer('period_year'),
+            'spt_type'          => $request->input('spt_type'),
             'status'            => 'uploaded',
         ]);
 
@@ -69,7 +73,7 @@ class ImportMonthlySptController extends Controller
     {
         $imports = MonthlySptImport::orderByDesc('created_at')
             ->limit(20)
-            ->get(['id', 'original_filename', 'period_month', 'period_year', 'status', 'total_rows', 'imported_rows', 'invalid_rows', 'created_at', 'processed_at']);
+            ->get(['id', 'original_filename', 'period_month', 'period_year', 'spt_type', 'status', 'total_rows', 'imported_rows', 'invalid_rows', 'created_at', 'processed_at']);
 
         return response()->json($imports);
     }
@@ -88,6 +92,7 @@ class ImportMonthlySptController extends Controller
                 'ar_data.nip',
                 'monthly_spt_imports.period_month',
                 'monthly_spt_imports.period_year',
+                'monthly_spt_imports.spt_type',
                 'monthly_spts.status',
                 'monthly_spts.contacted_at',
                 'monthly_spts.done_at',
@@ -108,6 +113,10 @@ class ImportMonthlySptController extends Controller
 
         if (($status = $request->input('status')) && $status !== 'all') {
             $query->where('monthly_spts.status', $status);
+        }
+
+        if (($sptType = $request->input('spt_type')) && $sptType !== 'all') {
+            $query->where('monthly_spt_imports.spt_type', $sptType);
         }
 
         $perPage = min(max((int) $request->input('per_page', 50), 10), 100);
@@ -170,6 +179,10 @@ class ImportMonthlySptController extends Controller
                       ->where('monthly_spt_imports.period_month', $periodMonth);
         }
 
+        if (($sptType = $request->input('spt_type')) && $sptType !== 'all') {
+            $statsBase->where('monthly_spt_imports.spt_type', $sptType);
+        }
+
         $stats = [
             'total'   => (clone $statsBase)->count(),
             'pending' => (clone $statsBase)->where('monthly_spts.status', 'pending')->count(),
@@ -187,6 +200,7 @@ class ImportMonthlySptController extends Controller
                 'master_data.whatsapp_number',
                 'monthly_spt_imports.period_month',
                 'monthly_spt_imports.period_year',
+                'monthly_spt_imports.spt_type',
                 'monthly_spts.status',
                 'monthly_spts.contacted_at',
                 'monthly_spts.done_at',
@@ -209,6 +223,10 @@ class ImportMonthlySptController extends Controller
 
         if (($status = $request->input('status')) && $status !== 'all') {
             $query->where('monthly_spts.status', $status);
+        }
+
+        if (($sptType = $request->input('spt_type')) && $sptType !== 'all') {
+            $query->where('monthly_spt_imports.spt_type', $sptType);
         }
 
         $perPage = min(max((int) $request->input('per_page', 50), 10), 100);

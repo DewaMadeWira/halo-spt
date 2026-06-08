@@ -33,6 +33,7 @@ import {
     type PaginatedResponse,
 } from "@/Components/ui/data-table-pagination";
 import SidebarLayout from "@/Layouts/SidebarLayout";
+import { SPT_TYPES, sptTypeLabel } from "@/lib/sptTypes";
 
 type TaskStatus = "pending" | "contacted" | "done";
 
@@ -41,6 +42,7 @@ interface ImportRecord {
     original_filename: string;
     period_month: number;
     period_year: number;
+    spt_type: string | null;
     status: string;
     imported_rows: number;
     invalid_rows: number;
@@ -55,6 +57,7 @@ interface SptRecord {
     nip: string;
     period_month: number;
     period_year: number;
+    spt_type: string | null;
     status: TaskStatus;
     contacted_at: string | null;
     done_at: string | null;
@@ -91,10 +94,12 @@ export default function MonthlySpt() {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+    const [sptTypeFilter, setSptTypeFilter] = useState<string>("all");
     const [loading, setLoading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [periodMonth, setPeriodMonth] = useState(String(new Date().getMonth() + 1));
     const [periodYear, setPeriodYear] = useState(String(new Date().getFullYear()));
+    const [uploadSptType, setUploadSptType] = useState<string>(SPT_TYPES[0].value);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
@@ -128,6 +133,7 @@ export default function MonthlySpt() {
                     per_page: perPage,
                     search: debouncedSearch || undefined,
                     status: statusFilter !== "all" ? statusFilter : undefined,
+                    spt_type: sptTypeFilter !== "all" ? sptTypeFilter : undefined,
                 },
             });
             setRecords(data.data);
@@ -145,7 +151,7 @@ export default function MonthlySpt() {
         } finally {
             setLoading(false);
         }
-    }, [page, perPage, debouncedSearch, statusFilter]);
+    }, [page, perPage, debouncedSearch, statusFilter, sptTypeFilter]);
 
     useEffect(() => {
         fetchImports();
@@ -160,6 +166,11 @@ export default function MonthlySpt() {
     const handleStatusFilterChange = (val: string) => {
         setPage(1);
         setStatusFilter(val as TaskStatus | "all");
+    };
+
+    const handleSptTypeFilterChange = (val: string) => {
+        setPage(1);
+        setSptTypeFilter(val);
     };
 
     const handlePerPageChange = (val: number) => {
@@ -178,6 +189,7 @@ export default function MonthlySpt() {
         formData.append("file", selectedFile);
         formData.append("period_month", String(month));
         formData.append("period_year", String(year));
+        formData.append("spt_type", uploadSptType);
 
         setUploading(true);
         setUploadError(null);
@@ -251,6 +263,19 @@ export default function MonthlySpt() {
                                     </PopoverDescription>
                                 </PopoverHeader>
                                 <div className="space-y-3 pt-2">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">SPT type</label>
+                                        <Select value={uploadSptType} onValueChange={setUploadSptType}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {SPT_TYPES.map((t) => (
+                                                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
                                             <label className="block text-sm font-medium mb-1">Month</label>
@@ -287,6 +312,7 @@ export default function MonthlySpt() {
                                 <TableRow>
                                     <TableHead>File name</TableHead>
                                     <TableHead>Period</TableHead>
+                                    <TableHead>SPT type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Imported</TableHead>
                                     <TableHead>Invalid</TableHead>
@@ -298,7 +324,7 @@ export default function MonthlySpt() {
                             <TableBody>
                                 {imports.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">
                                             No uploaded files yet.
                                         </TableCell>
                                     </TableRow>
@@ -307,6 +333,7 @@ export default function MonthlySpt() {
                                         <TableRow>
                                             <TableCell className="max-w-[180px] truncate">{imp.original_filename}</TableCell>
                                             <TableCell>{imp.period_year}-{String(imp.period_month).padStart(2, "0")}</TableCell>
+                                            <TableCell>{sptTypeLabel(imp.spt_type)}</TableCell>
                                             <TableCell>
                                                 <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">
                                                     {imp.status}
@@ -336,7 +363,7 @@ export default function MonthlySpt() {
                                         </TableRow>
                                         {expandedImportId === imp.id && imp.invalid_rows > 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={8} className="p-0">
+                                                <TableCell colSpan={9} className="p-0">
                                                     <ImportInvalidRows endpoint={`/api/monthly-spt/${imp.id}/invalid-rows`} />
                                                 </TableCell>
                                             </TableRow>
@@ -361,6 +388,17 @@ export default function MonthlySpt() {
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="w-56"
                                 />
+                                <Select value={sptTypeFilter} onValueChange={handleSptTypeFilterChange}>
+                                    <SelectTrigger className="w-48">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All SPT types</SelectItem>
+                                        {SPT_TYPES.map((t) => (
+                                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                                 <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
                                     <SelectTrigger className="w-36">
                                         <SelectValue />
@@ -380,6 +418,7 @@ export default function MonthlySpt() {
                                     <TableRow>
                                         <TableHead>NPWP</TableHead>
                                         <TableHead>Company</TableHead>
+                                        <TableHead>SPT type</TableHead>
                                         <TableHead>AR NIP</TableHead>
                                         <TableHead>Period</TableHead>
                                         <TableHead>Status</TableHead>
@@ -390,8 +429,8 @@ export default function MonthlySpt() {
                                 <TableBody>
                                     {records.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">
-                                                {debouncedSearch || statusFilter !== "all"
+                                            <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
+                                                {debouncedSearch || statusFilter !== "all" || sptTypeFilter !== "all"
                                                     ? "No records match the current filter."
                                                     : "No SPT records imported yet."}
                                             </TableCell>
@@ -400,6 +439,7 @@ export default function MonthlySpt() {
                                         <TableRow key={row.id}>
                                             <TableCell>{row.npwp}</TableCell>
                                             <TableCell>{row.taxpayer_name ?? "-"}</TableCell>
+                                            <TableCell>{sptTypeLabel(row.spt_type)}</TableCell>
                                             <TableCell>{row.nip}</TableCell>
                                             <TableCell>{row.period_year}-{String(row.period_month).padStart(2, "0")}</TableCell>
                                             <TableCell><StatusBadge status={row.status} /></TableCell>

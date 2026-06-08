@@ -7,6 +7,8 @@ import { Textarea } from "@/Components/ui/textarea";
 import { Button } from "@/Components/ui/button";
 import SidebarLayout from "@/Layouts/SidebarLayout";
 
+import { sptTypeLabel } from "@/lib/sptTypes";
+
 interface AssignedRecord {
     npwp: string;
     taxpayer_name: string | null;
@@ -14,6 +16,7 @@ interface AssignedRecord {
     whatsapp_number: string | null;
     period_year: number;
     period_month: number;
+    spt_type: string | null;
 }
 
 function formatMonthLabel(year: number, month: number) {
@@ -30,13 +33,13 @@ export default function AssignmentTemplates() {
     )?.user ?? { name: "Account Representative Anda" };
 
     const [emailSubject, setEmailSubject] = useState(
-        "Pengingat SPT Masa {{period}}",
+        "Pengingat SPT Masa {{spt_type}} {{period}}",
     );
     const [emailBody, setEmailBody] = useState(
-        "Yth. Bapak/Ibu Pimpinan {{company}},\n\nBerdasarkan pantauan sistem kami, Anda belum melakukan pelaporan SPT Masa untuk bulan {{period}} yang telah melewati jatuh tempo.\n\nMohon segera laporkan kewajiban perpajakan Anda (NPWP: {{npwp}}) sesegera mungkin.\n\nJika ada kendala, silakan hubungi kami.\n\nSalam,\n{{ar_name}} - Account Representative Anda",
+        "Yth. Bapak/Ibu Pimpinan {{company}},\n\nBerdasarkan pantauan sistem kami, Anda belum melakukan pelaporan SPT Masa {{spt_type}} untuk bulan {{period}} yang telah melewati jatuh tempo.\n\nMohon segera laporkan kewajiban perpajakan Anda (NPWP: {{npwp}}) sesegera mungkin.\n\nJika ada kendala, silakan hubungi kami.\n\nSalam,\n{{ar_name}} - Account Representative Anda",
     );
     const [whatsappBody, setWhatsappBody] = useState(
-        "Yth. Bapak/Ibu Pimpinan {{company}},\n\nMohon segera menindaklanjuti pelaporan SPT Masa untuk bulan {{period}} (NPWP: {{npwp}}). Jika butuh bantuan, silakan hubungi saya.\n\nTerima kasih.\n{{ar_name}}",
+        "Yth. Bapak/Ibu Pimpinan {{company}},\n\nMohon segera menindaklanjuti pelaporan SPT Masa {{spt_type}} untuk bulan {{period}} (NPWP: {{npwp}}). Jika butuh bantuan, silakan hubungi saya.\n\nTerima kasih.\n{{ar_name}}",
     );
 
     const [loading, setLoading] = useState(true);
@@ -90,6 +93,7 @@ export default function AssignmentTemplates() {
         whatsapp_number: "081234567890",
         period_year: 2026,
         period_month: 4,
+        spt_type: "pph_21",
     };
 
     const formatTemplate = (template: string, row: AssignedRecord) => {
@@ -101,6 +105,8 @@ export default function AssignmentTemplates() {
                     return row.npwp;
                 case "period":
                     return formatMonthLabel(row.period_year, row.period_month);
+                case "spt_type":
+                    return sptTypeLabel(row.spt_type);
                 case "ar_name":
                     return user?.name ?? "Account Representative Anda";
                 default:
@@ -140,6 +146,7 @@ export default function AssignmentTemplates() {
                             <code>{"{{company}}"}</code>,{" "}
                             <code>{"{{npwp}}"}</code>,{" "}
                             <code>{"{{period}}"}</code>,{" "}
+                            <code>{"{{spt_type}}"}</code>,{" "}
                             <code>{"{{ar_name}}"}</code>.
                         </p>
                         <div className="mt-4 space-y-4">

@@ -23,6 +23,7 @@ import {
     type PaginationMeta,
 } from "@/Components/ui/data-table-pagination";
 import SidebarLayout from "@/Layouts/SidebarLayout";
+import { SPT_TYPES, sptTypeLabel } from "@/lib/sptTypes";
 
 type TaskStatus = "pending" | "contacted" | "done";
 
@@ -39,6 +40,7 @@ interface SptRecord {
     whatsapp_number: string | null;
     period_year: number;
     period_month: number;
+    spt_type: string | null;
     status: TaskStatus;
     contacted_at: string | null;
     done_at: string | null;
@@ -100,18 +102,19 @@ function normalizeWhatsappNumber(value: string) {
     return digits;
 }
 
-const defaultEmailSubject = "Pengingat SPT Masa {{period}}";
-const defaultEmailBody = `Yth. Bapak/Ibu Pimpinan {{company}},\n\nBerdasarkan pantauan sistem kami, Anda belum melakukan pelaporan SPT Masa untuk bulan {{period}} yang telah melewati jatuh tempo.\n\nMohon segera laporkan kewajiban perpajakan Anda (NPWP: {{npwp}}) sesegera mungkin.\n\nJika ada kendala, silakan hubungi kami.\n\nSalam,\n{{ar_name}} - Account Representative Anda`;
-const defaultWhatsappBody = `Yth. Bapak/Ibu Pimpinan {{company}},\n\nMohon segera menindaklanjuti pelaporan SPT Masa untuk bulan {{period}} (NPWP: {{npwp}}). Jika butuh bantuan, silakan hubungi saya.\n\nTerima kasih.\n{{ar_name}}`;
+const defaultEmailSubject = "Pengingat SPT Masa {{spt_type}} {{period}}";
+const defaultEmailBody = `Yth. Bapak/Ibu Pimpinan {{company}},\n\nBerdasarkan pantauan sistem kami, Anda belum melakukan pelaporan SPT Masa {{spt_type}} untuk bulan {{period}} yang telah melewati jatuh tempo.\n\nMohon segera laporkan kewajiban perpajakan Anda (NPWP: {{npwp}}) sesegera mungkin.\n\nJika ada kendala, silakan hubungi kami.\n\nSalam,\n{{ar_name}} - Account Representative Anda`;
+const defaultWhatsappBody = `Yth. Bapak/Ibu Pimpinan {{company}},\n\nMohon segera menindaklanjuti pelaporan SPT Masa {{spt_type}} untuk bulan {{period}} (NPWP: {{npwp}}). Jika butuh bantuan, silakan hubungi saya.\n\nTerima kasih.\n{{ar_name}}`;
 
 function formatTemplate(template: string, row: SptRecord, arName: string) {
     return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
         switch (token) {
-            case "company": return row.taxpayer_name ?? row.npwp;
-            case "npwp":    return row.npwp;
-            case "period":  return formatPeriodLabel(row.period_year, row.period_month);
-            case "ar_name": return arName;
-            default:        return "";
+            case "company":  return row.taxpayer_name ?? row.npwp;
+            case "npwp":     return row.npwp;
+            case "period":   return formatPeriodLabel(row.period_year, row.period_month);
+            case "spt_type": return sptTypeLabel(row.spt_type);
+            case "ar_name":  return arName;
+            default:         return "";
         }
     });
 }
@@ -136,6 +139,7 @@ export default function MyAssignments() {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+    const [sptTypeFilter, setSptTypeFilter] = useState<string>("all");
     const [fetchKey, setFetchKey] = useState(0);
     const [loading, setLoading] = useState(false);
     const [pageError, setPageError] = useState<string | null>(null);
@@ -201,6 +205,7 @@ export default function MyAssignments() {
                     per_page:     perPage,
                     search:       debouncedSearch || undefined,
                     status:       statusFilter !== "all" ? statusFilter : undefined,
+                    spt_type:     sptTypeFilter !== "all" ? sptTypeFilter : undefined,
                 },
             });
             setRecords(data.data);
@@ -225,7 +230,7 @@ export default function MyAssignments() {
         } finally {
             setLoading(false);
         }
-    }, [selectedPeriod, page, perPage, debouncedSearch, statusFilter, fetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [selectedPeriod, page, perPage, debouncedSearch, statusFilter, sptTypeFilter, fetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         fetchRecords();
@@ -237,12 +242,18 @@ export default function MyAssignments() {
         setSearch("");
         setDebouncedSearch("");
         setStatusFilter("all");
+        setSptTypeFilter("all");
         setSelectedPeriod(val);
     };
 
     const handleStatusFilterChange = (val: string) => {
         setPage(1);
         setStatusFilter(val as TaskStatus | "all");
+    };
+
+    const handleSptTypeFilterChange = (val: string) => {
+        setPage(1);
+        setSptTypeFilter(val);
     };
 
     const handlePerPageChange = (val: number) => {
@@ -365,6 +376,17 @@ export default function MyAssignments() {
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="max-w-xs"
                                 />
+                                <Select value={sptTypeFilter} onValueChange={handleSptTypeFilterChange}>
+                                    <SelectTrigger className="w-48">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All SPT types</SelectItem>
+                                        {SPT_TYPES.map((t) => (
+                                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                                 <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
                                     <SelectTrigger className="w-36">
                                         <SelectValue />
@@ -384,6 +406,7 @@ export default function MyAssignments() {
                                         <TableRow>
                                             <TableHead>NPWP</TableHead>
                                             <TableHead>Company</TableHead>
+                                            <TableHead>SPT type</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>Contact</TableHead>
                                             <TableHead>Update</TableHead>
@@ -392,8 +415,8 @@ export default function MyAssignments() {
                                     <TableBody>
                                         {records.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                                                    {debouncedSearch || statusFilter !== "all"
+                                                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                                                    {debouncedSearch || statusFilter !== "all" || sptTypeFilter !== "all"
                                                         ? "No tasks match the current filter."
                                                         : "No tasks for this period."}
                                                 </TableCell>
@@ -417,6 +440,7 @@ export default function MyAssignments() {
                                                 <TableRow key={row.id}>
                                                     <TableCell>{row.npwp}</TableCell>
                                                     <TableCell>{row.taxpayer_name ?? "-"}</TableCell>
+                                                    <TableCell>{sptTypeLabel(row.spt_type)}</TableCell>
                                                     <TableCell>
                                                         <StatusBadge status={row.status} />
                                                     </TableCell>

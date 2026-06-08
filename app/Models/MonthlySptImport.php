@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SptType;
 use Illuminate\Database\Eloquent\Model;
 
 class MonthlySptImport extends Model
@@ -14,6 +15,7 @@ class MonthlySptImport extends Model
         'original_filename',
         'period_month',
         'period_year',
+        'spt_type',
         'status',
         'total_rows',
         'imported_rows',
@@ -23,6 +25,7 @@ class MonthlySptImport extends Model
 
     protected $casts = [
         'processed_at' => 'datetime',
+        'spt_type'     => SptType::class,
     ];
 
     public function records()
