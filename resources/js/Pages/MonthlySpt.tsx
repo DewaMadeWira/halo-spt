@@ -44,6 +44,7 @@ interface ImportRecord {
     period_year: number;
     spt_type: string | null;
     status: string;
+    total_rows: number;
     imported_rows: number;
     invalid_rows: number;
     created_at: string;
@@ -314,6 +315,7 @@ export default function MonthlySpt() {
                                     <TableHead>Period</TableHead>
                                     <TableHead>SPT type</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Detected</TableHead>
                                     <TableHead>Imported</TableHead>
                                     <TableHead>Invalid</TableHead>
                                     <TableHead>Uploaded at</TableHead>
@@ -324,7 +326,7 @@ export default function MonthlySpt() {
                             <TableBody>
                                 {imports.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={10} className="py-6 text-center text-sm text-muted-foreground">
                                             No uploaded files yet.
                                         </TableCell>
                                     </TableRow>
@@ -339,6 +341,7 @@ export default function MonthlySpt() {
                                                     {imp.status}
                                                 </span>
                                             </TableCell>
+                                            <TableCell>{imp.total_rows}</TableCell>
                                             <TableCell>{imp.imported_rows}</TableCell>
                                             <TableCell>
                                                 {imp.invalid_rows > 0 ? (
@@ -363,7 +366,7 @@ export default function MonthlySpt() {
                                         </TableRow>
                                         {expandedImportId === imp.id && imp.invalid_rows > 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={9} className="p-0">
+                                                <TableCell colSpan={10} className="p-0">
                                                     <ImportInvalidRows endpoint={`/api/monthly-spt/${imp.id}/invalid-rows`} />
                                                 </TableCell>
                                             </TableRow>

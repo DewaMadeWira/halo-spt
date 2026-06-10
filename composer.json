@@ -49,7 +49,7 @@
             "npm install --ignore-scripts",
             "npm run build"
         ],
-        "dev": "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=7000\" \"npm run dev\" --names='server,queue,vite'",
+        "dev": "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=7000 --memory=512\" \"npm run dev\" --names='server,queue,vite'",
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
