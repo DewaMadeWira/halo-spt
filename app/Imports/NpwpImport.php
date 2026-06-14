@@ -5,15 +5,17 @@ namespace App\Imports;
 use App\Models\ImportFile;
 use App\Models\ImportFileInvalidRow;
 use App\Models\MasterData;
+use App\Imports\Concerns\TracksImportProgress;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class NpwpImport implements ToCollection, WithHeadingRow, WithChunkReading
+class NpwpImport implements ToCollection, WithHeadingRow, WithChunkReading, WithEvents
 {
-    use RemembersChunkOffset;
+    use RemembersChunkOffset, TracksImportProgress;
 
     public function __construct(
         private ImportFile $importFile
@@ -24,6 +26,9 @@ class NpwpImport implements ToCollection, WithHeadingRow, WithChunkReading
      */
     public function collection(Collection $collection)
     {
+        // Stop cleanly if the user pressed Stop since the last chunk.
+        $this->abortIfCancelled();
+
         $validRows   = [];
         $invalidRows = [];
 

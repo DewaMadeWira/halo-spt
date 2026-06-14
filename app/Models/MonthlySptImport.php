@@ -20,12 +20,15 @@ class MonthlySptImport extends Model
         'total_rows',
         'imported_rows',
         'invalid_rows',
+        'expected_rows',
+        'cancel_requested',
         'processed_at',
     ];
 
     protected $casts = [
-        'processed_at' => 'datetime',
-        'spt_type'     => SptType::class,
+        'processed_at'     => 'datetime',
+        'spt_type'         => SptType::class,
+        'cancel_requested' => 'boolean',
     ];
 
     public function records()

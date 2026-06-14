@@ -8,16 +8,19 @@ use App\Models\ImportFileARInvalidRow;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use App\Imports\Concerns\TracksImportProgress;
 use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class ARImport implements ToCollection, WithHeadingRow, WithChunkReading, WithCalculatedFormulas
+class ARImport implements ToCollection, WithHeadingRow, WithChunkReading, WithCalculatedFormulas, WithEvents
 {
-    use RemembersChunkOffset;
+    use RemembersChunkOffset, TracksImportProgress;
 
     public function __construct(
         private ImportFileAR $importFile
@@ -32,11 +35,19 @@ class ARImport implements ToCollection, WithHeadingRow, WithChunkReading, WithCa
      */
     public function collection(Collection $collection)
     {
+        // Stop cleanly if the user pressed Stop since the last chunk.
+        $this->abortIfCancelled();
+
         $validRows   = [];
         $invalidRows = [];
 
-        DB::transaction(function () use ($collection, &$validRows, &$invalidRows) {
-            $defaultPassword = (string) config('import.default_ar_password', 'password');
+        // bcrypt (rounds=12) costs ~300ms per hash. Hashing the shared default
+        // password once instead of once per row is the difference between a
+        // multi-minute import and a few seconds. The 'hashed' cast detects an
+        // already-hashed value and won't re-hash it, so this is safe to pass.
+        $hashedDefault = Hash::make((string) config('import.default_ar_password', 'password'));
+
+        DB::transaction(function () use ($collection, &$validRows, &$invalidRows, $hashedDefault) {
 
             foreach ($collection as $index => $row) {
                 // Per-chunk collections re-key from 0, so add the chunk's spreadsheet
@@ -75,20 +86,22 @@ class ARImport implements ToCollection, WithHeadingRow, WithChunkReading, WithCa
                     continue;
                 }
 
+                // Only pay for a fresh bcrypt hash when the row supplies its own
+                // password; otherwise reuse the pre-hashed default.
+                $hashedPassword = $password ? Hash::make((string) $password) : $hashedDefault;
+
                 // Provision / refresh the AR login account (matched by NIP).
-                $user = User::updateOrCreate(
+                // email_verified_at is set here (admin-provisioned accounts skip
+                // verification) so we avoid a second UPDATE per row.
+                User::updateOrCreate(
                     ['nip' => $nip, 'role' => 'ar'],
                     [
-                        'name'     => $username,
-                        'email'    => $email,
-                        'password' => $password ?: $defaultPassword, // hashed by model cast
+                        'name'              => $username,
+                        'email'             => $email,
+                        'password'          => $hashedPassword, // already hashed; cast won't re-hash
+                        'email_verified_at' => now(),
                     ]
                 );
-
-                // Admin-provisioned accounts skip email verification.
-                if (is_null($user->email_verified_at)) {
-                    $user->forceFill(['email_verified_at' => now()])->save();
-                }
 
                 $validRows[] = [
                     'username' => $username,

@@ -113,6 +113,17 @@ export default function Login({
                         Log in
                     </PrimaryButton>
                 </div>
+
+                <div className="mt-6 flex items-center justify-center">
+                    <img
+                        src="/logo-djp.png"
+                        alt="DJP - KPP Pratama Jakarta Tanah Abang Satu"
+                        className="h-10 w-auto"
+                    />
+                    <span className="ms-2 text-sm font-semibold text-blue-900">
+                        KPP Pratama Jakarta Tanah Abang Satu
+                    </span>
+                </div>
             </form>
         </GuestLayout>
     );

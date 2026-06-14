@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { ImportInvalidRows } from "@/Components/ImportInvalidRows";
+import { ImportProgress } from "@/Components/ImportProgress";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { toast } from "sonner";
@@ -47,6 +48,8 @@ interface ImportRecord {
     total_rows: number;
     imported_rows: number;
     invalid_rows: number;
+    expected_rows: number | null;
+    cancel_requested: boolean;
     created_at: string;
     processed_at: string | null;
 }
@@ -156,9 +159,14 @@ export default function MonthlySpt() {
 
     useEffect(() => {
         fetchImports();
-        const interval = window.setInterval(fetchImports, 10000);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Poll faster while an import is running so the progress bar stays live.
+    const hasProcessing = imports.some((imp) => imp.status === "processing");
+    useEffect(() => {
+        const interval = window.setInterval(fetchImports, hasProcessing ? 2000 : 10000);
         return () => window.clearInterval(interval);
-    }, []);
+    }, [hasProcessing]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         fetchRecords();
@@ -219,6 +227,16 @@ export default function MonthlySpt() {
             await axios.post(`/api/monthly-spt/${importId}/process`);
             await fetchImports();
             setPageError(null);
+        } catch (error) {
+            setPageError(getErrorMessage(error));
+        }
+    };
+
+    const handleCancel = async (importId: number) => {
+        try {
+            await axios.post(`/api/monthly-spt/${importId}/cancel`);
+            await fetchImports();
+            toast.success("Stopping import…");
         } catch (error) {
             setPageError(getErrorMessage(error));
         }
@@ -340,6 +358,13 @@ export default function MonthlySpt() {
                                                 <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">
                                                     {imp.status}
                                                 </span>
+                                                <ImportProgress
+                                                    status={imp.status}
+                                                    importedRows={imp.imported_rows}
+                                                    invalidRows={imp.invalid_rows}
+                                                    expectedRows={imp.expected_rows}
+                                                    cancelRequested={imp.cancel_requested}
+                                                />
                                             </TableCell>
                                             <TableCell>{imp.total_rows}</TableCell>
                                             <TableCell>{imp.imported_rows}</TableCell>
@@ -359,9 +384,15 @@ export default function MonthlySpt() {
                                             <TableCell>{new Date(imp.created_at).toLocaleString()}</TableCell>
                                             <TableCell>{imp.processed_at ? new Date(imp.processed_at).toLocaleString() : "-"}</TableCell>
                                             <TableCell>
-                                                <Button variant="outline" size="sm" onClick={() => handleProcess(imp.id)} disabled={imp.status === "processing"}>
-                                                    {imp.status === "processing" ? "Processing" : "Re-process"}
-                                                </Button>
+                                                {imp.status === "processing" ? (
+                                                    <Button variant="destructive" size="sm" onClick={() => handleCancel(imp.id)} disabled={imp.cancel_requested}>
+                                                        {imp.cancel_requested ? "Stopping…" : "Stop"}
+                                                    </Button>
+                                                ) : (
+                                                    <Button variant="outline" size="sm" onClick={() => handleProcess(imp.id)}>
+                                                        Re-process
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                         {expandedImportId === imp.id && imp.invalid_rows > 0 ? (

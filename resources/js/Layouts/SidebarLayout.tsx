@@ -22,9 +22,11 @@ export default function SidebarLayout({ children }: PropsWithChildren) {
                 <SidebarHeader className="bg-blue-900">
                     <div className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center text-blue-900 font-bold text-sm">
-                                📄
-                            </div>
+                            <img
+                                src="/logo-spt.png"
+                                alt="Halo SPT"
+                                className="w-9 h-9 object-contain"
+                            />
                             <div>
                                 <div className="text-sm font-bold text-amber-400 tracking-wide">
                                     HALO SPT

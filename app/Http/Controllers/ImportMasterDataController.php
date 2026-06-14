@@ -62,6 +62,19 @@ class ImportMasterDataController extends Controller
         return response()->json(['message' => 'Import job has been queued.']);
     }
 
+    public function cancel(ImportFile $importFile)
+    {
+        $this->authorizeAdmin();
+
+        if ($importFile->status !== 'processing') {
+            return response()->json(['message' => 'Import is not running.'], 409);
+        }
+
+        $importFile->update(['cancel_requested' => true]);
+
+        return response()->json(['message' => 'Stopping import…']);
+    }
+
     public function status(ImportFile $importFile)
     {
         $this->authorizeAdmin();
@@ -71,6 +84,8 @@ class ImportMasterDataController extends Controller
             'total_rows' => $importFile->total_rows,
             'imported_rows' => $importFile->imported_rows,
             'invalid_rows' => $importFile->invalid_rows,
+            'expected_rows' => $importFile->expected_rows,
+            'cancel_requested' => $importFile->cancel_requested,
             'processed_at' => $importFile->processed_at,
         ]);
     }

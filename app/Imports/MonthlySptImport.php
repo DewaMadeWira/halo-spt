@@ -7,15 +7,19 @@ use App\Models\MasterData;
 use App\Models\MonthlySpt;
 use App\Models\MonthlySptImport as MonthlySptImportModel;
 use App\Models\MonthlySptInvalidRow;
+use App\Imports\Concerns\TracksImportProgress;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithLimit;
 
-class MonthlySptImport implements ToCollection, WithHeadingRow, WithChunkReading, WithLimit
+class MonthlySptImport implements ToCollection, WithHeadingRow, WithChunkReading, WithLimit, WithEvents
 {
+    use TracksImportProgress;
+
     private int $importedRows = 0;
     private int $invalidRows  = 0;
 
@@ -28,6 +32,9 @@ class MonthlySptImport implements ToCollection, WithHeadingRow, WithChunkReading
 
     public function collection(Collection $collection)
     {
+        // Stop cleanly if the user pressed Stop since the last chunk.
+        $this->abortIfCancelled();
+
         $validRows   = [];
         $invalidRows = [];
 

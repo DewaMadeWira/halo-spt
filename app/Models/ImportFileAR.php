@@ -13,11 +13,14 @@ class ImportFileAR extends Model
         'total_rows',
         'imported_rows',
         'invalid_rows',
+        'expected_rows',
+        'cancel_requested',
         'processed_at',
     ];
 
     protected $casts = [
-        'processed_at' => 'datetime'
+        'processed_at'     => 'datetime',
+        'cancel_requested' => 'boolean',
     ];
 
     public function invalidRows()

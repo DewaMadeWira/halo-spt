@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\ImportCancelledException;
 use App\Imports\ARImport;
 use App\Models\ImportFileAR;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -55,10 +56,12 @@ class ProcessARImportFile implements ShouldQueue
         // Reset counters and clear prior invalid rows so re-processing is idempotent.
         $this->importFile->invalidRows()->delete();
         $this->importFile->update([
-            'status'        => 'processing',
-            'total_rows'    => 0,
-            'imported_rows' => 0,
-            'invalid_rows'  => 0,
+            'status'           => 'processing',
+            'total_rows'       => 0,
+            'imported_rows'    => 0,
+            'invalid_rows'     => 0,
+            'expected_rows'    => null,
+            'cancel_requested' => false,
         ]);
         try {
             Excel::import(new ARImport($this->importFile), $this->importFile->file_path, 'local'); // WINDOWS FILE PATH
@@ -66,6 +69,14 @@ class ProcessARImportFile implements ShouldQueue
             $this->importFile->update([
                 'status'       => 'done',
                 'processed_at' => now(),
+            ]);
+        } catch (ImportCancelledException $e) {
+            // User pressed Stop — land in "cancelled", not "failed", and do not
+            // re-throw so the queue treats the job as completed.
+            $this->importFile->update([
+                'status'           => 'cancelled',
+                'cancel_requested' => false,
+                'processed_at'     => now(),
             ]);
         } catch (\Throwable $e) {
             $this->importFile->update(['status' => 'failed']);

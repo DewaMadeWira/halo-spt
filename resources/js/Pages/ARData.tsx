@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { ImportInvalidRows } from "@/Components/ImportInvalidRows";
+import { ImportProgress } from "@/Components/ImportProgress";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import Modal from "@/Components/Modal";
@@ -35,6 +36,8 @@ interface ImportFileRecord {
     total_rows: number;
     imported_rows: number;
     invalid_rows: number;
+    expected_rows: number | null;
+    cancel_requested: boolean;
     created_at: string;
     processed_at: string | null;
 }
@@ -238,9 +241,14 @@ export default function ARData() {
     useEffect(() => {
         fetchImports();
         fetchArData();
-        const interval = window.setInterval(fetchImports, 10000);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Poll faster while an import is running so the progress bar stays live.
+    const hasProcessing = imports.some((f) => f.status === "processing");
+    useEffect(() => {
+        const interval = window.setInterval(fetchImports, hasProcessing ? 2000 : 10000);
         return () => window.clearInterval(interval);
-    }, []);
+    }, [hasProcessing]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         fetchArData();
@@ -278,6 +286,16 @@ export default function ARData() {
             await axios.post(`/api/import-ar/${importFileId}/process`);
             await fetchImports();
             setPageError(null);
+        } catch (error) {
+            setPageError(getErrorMessage(error));
+        }
+    };
+
+    const handleCancel = async (importFileId: number) => {
+        try {
+            await axios.post(`/api/import-ar/${importFileId}/cancel`);
+            await fetchImports();
+            toast.success("Stopping import…");
         } catch (error) {
             setPageError(getErrorMessage(error));
         }
@@ -399,6 +417,13 @@ export default function ARData() {
                                             <TableCell>{f.original_name}</TableCell>
                                             <TableCell>
                                                 <span className="rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground bg-muted/70">{f.status}</span>
+                                                <ImportProgress
+                                                    status={f.status}
+                                                    importedRows={f.imported_rows}
+                                                    invalidRows={f.invalid_rows}
+                                                    expectedRows={f.expected_rows}
+                                                    cancelRequested={f.cancel_requested}
+                                                />
                                             </TableCell>
                                             <TableCell>{f.imported_rows}</TableCell>
                                             <TableCell>
@@ -417,9 +442,15 @@ export default function ARData() {
                                             <TableCell>{new Date(f.created_at).toLocaleString()}</TableCell>
                                             <TableCell>{f.processed_at ? new Date(f.processed_at).toLocaleString() : "-"}</TableCell>
                                             <TableCell>
-                                                <Button variant="outline" size="sm" onClick={() => handleProcess(f.id)} disabled={f.status === "processing"}>
-                                                    {f.status === "processing" ? "Processing" : "Process"}
-                                                </Button>
+                                                {f.status === "processing" ? (
+                                                    <Button variant="destructive" size="sm" onClick={() => handleCancel(f.id)} disabled={f.cancel_requested}>
+                                                        {f.cancel_requested ? "Stopping…" : "Stop"}
+                                                    </Button>
+                                                ) : (
+                                                    <Button variant="outline" size="sm" onClick={() => handleProcess(f.id)}>
+                                                        Process
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                         {expandedImportId === f.id && f.invalid_rows > 0 ? (

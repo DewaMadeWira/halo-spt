@@ -49,16 +49,31 @@ class ImportMonthlySptController extends Controller
         return response()->json(['message' => 'Import job has been queued.']);
     }
 
+    public function cancel(MonthlySptImport $monthlySptImport)
+    {
+        $this->authorizeAdmin();
+
+        if ($monthlySptImport->status !== 'processing') {
+            return response()->json(['message' => 'Import is not running.'], 409);
+        }
+
+        $monthlySptImport->update(['cancel_requested' => true]);
+
+        return response()->json(['message' => 'Stopping import…']);
+    }
+
     public function status(MonthlySptImport $monthlySptImport)
     {
         return response()->json([
-            'status'        => $monthlySptImport->status,
-            'period_month'  => $monthlySptImport->period_month,
-            'period_year'   => $monthlySptImport->period_year,
-            'total_rows'    => $monthlySptImport->total_rows,
-            'imported_rows' => $monthlySptImport->imported_rows,
-            'invalid_rows'  => $monthlySptImport->invalid_rows,
-            'processed_at'  => $monthlySptImport->processed_at,
+            'status'           => $monthlySptImport->status,
+            'period_month'     => $monthlySptImport->period_month,
+            'period_year'      => $monthlySptImport->period_year,
+            'total_rows'       => $monthlySptImport->total_rows,
+            'imported_rows'    => $monthlySptImport->imported_rows,
+            'invalid_rows'     => $monthlySptImport->invalid_rows,
+            'expected_rows'    => $monthlySptImport->expected_rows,
+            'cancel_requested' => $monthlySptImport->cancel_requested,
+            'processed_at'     => $monthlySptImport->processed_at,
         ]);
     }
 
@@ -73,7 +88,7 @@ class ImportMonthlySptController extends Controller
     {
         $imports = MonthlySptImport::orderByDesc('created_at')
             ->limit(20)
-            ->get(['id', 'original_filename', 'period_month', 'period_year', 'spt_type', 'status', 'total_rows', 'imported_rows', 'invalid_rows', 'created_at', 'processed_at']);
+            ->get(['id', 'original_filename', 'period_month', 'period_year', 'spt_type', 'status', 'total_rows', 'imported_rows', 'invalid_rows', 'expected_rows', 'cancel_requested', 'created_at', 'processed_at']);
 
         return response()->json($imports);
     }
