@@ -11,12 +11,13 @@ use App\Imports\Concerns\TracksImportProgress;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithLimit;
 
-class MonthlySptImport implements ToCollection, WithHeadingRow, WithChunkReading, WithLimit, WithEvents
+class MonthlySptImport implements ToCollection, WithHeadingRow, WithChunkReading, WithLimit, WithCalculatedFormulas, WithEvents
 {
     use TracksImportProgress;
 
